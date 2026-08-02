@@ -7,4 +7,67 @@ parcial: 1
 topic: genericos
 ---
 
-{/* TODO: contenido docente */}
+Escribir un método `divideByTwo`, otro `divideByThree`, otro `divideByFour`... es difícil
+de mantener y no escala. La solución es **parametrizar** — pasar el divisor como
+argumento (`divideBy(int n, int divisor)`). Los genéricos aplican la misma idea, pero
+sobre **tipos de datos**: en vez de escribir una clase por cada tipo que necesite guardar,
+se escribe una sola vez y el tipo real se define al usarla.
+
+## Dos formas de lograrlo en Java
+
+1. **Usando `Object`** — como `Object` es superclase de todo, un método
+   `Object aMethod(Object o)` acepta cualquier valor. El problema: hay que hacer *cast*
+   explícito para recuperar el tipo real, y esos casts pueden fallar en tiempo de
+   ejecución (`ClassCastException`) sin que el compilador lo detecte antes.
+2. **Usando parámetros de tipo (genéricos)** — introducidos en Java en 2004 para dar
+   seguridad de tipo en **tiempo de compilación**, sin casts.
+
+## Clases genéricas
+
+```java
+public class Box<T> {
+  private T article;
+  public Box(T article) { this.article = article; }
+  public T getArticle() { return article; }
+  public void setArticle(T article) { this.article = article; }
+}
+```
+
+`T` es un **parámetro de tipo** (siempre entre `<>`); `Box` es una **clase genérica**. Al
+usarla, cada instancia fija su propio tipo real — `Box<String>`, `Box<Integer>`,
+`Box<Student>` — y `getArticle()` devuelve ese tipo directamente, sin cast.
+
+## Métodos e interfaces genéricos
+
+No solo las clases pueden ser genéricas:
+
+- **Métodos genéricos**: `public static <T> void imprimir(T objeto)` funciona con
+  cualquier tipo sin necesitar una versión por tipo.
+- **Interfaces genéricas**: `public interface Comparador<T> { boolean comparar(T a, T b); }`
+  permite que cada clase que la implemente trabaje con el tipo que le corresponda.
+
+## Wildcards (comodines)
+
+Dan más flexibilidad al usar tipos genéricos como parámetro de un método:
+
+- **Sin restricción** (`?`) — `List<?>` acepta una lista de cualquier tipo.
+- **Con límite superior** (`? extends T`) — `List<? extends Number>` acepta listas de
+  `Integer`, `Double`, o cualquier subtipo de `Number`.
+- **Con límite inferior** (`? super T`) — acepta `T` o cualquier supertipo de `T`.
+
+## Convenciones de nombres
+
+Los parámetros de tipo son letras mayúsculas simples: **E** (Element, colecciones),
+**K** (Key), **V** (Value), **N** (Number), **T** (Type), y **S, U, V...** para un segundo,
+tercer o cuarto tipo cuando una clase necesita más de uno (por ejemplo
+`Par<K, V>` o `Triple<T, U, V>`).
+
+## Reglas importantes
+
+- Los genéricos **no funcionan con tipos primitivos** — `Box<int>` es un error; hay que
+  usar la clase envolvente (`Box<Integer>`).
+- `Box<String>` y `Box<Integer>` son tipos distintos e incompatibles entre sí.
+- El parámetro de tipo no puede omitirse silenciosamente sin perder seguridad de tipo.
+- Parametrizar **no es lo mismo** que sobrecargar (*overloading*): la sobrecarga define
+  métodos distintos para tipos distintos, todos devolviendo el mismo tipo de salida; un
+  método genérico es uno solo, y su tipo de entrada y salida varían juntos según `T`.

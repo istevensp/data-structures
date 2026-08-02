@@ -7,4 +7,71 @@ parcial: 2
 topic: grafos
 ---
 
-{/* TODO: contenido docente */}
+A diferencia de un árbol, un grafo representa relaciones **arbitrarias** entre objetos, no
+necesariamente jerárquicas. Se usa para modelar desde redes eléctricas o de
+alcantarillado hasta relaciones sociales o rutas entre ciudades.
+
+## Definición
+
+Un grafo `G = (V, A)` está formado por un conjunto de **vértices** (`V`, los objetos) y un
+conjunto de **arcos** (`A`, las relaciones entre pares de vértices).
+
+- **Grafo dirigido** — los arcos son pares ordenados (`u → v`); la relación tiene un
+  sentido.
+- **Grafo no dirigido** — los arcos (aquí llamados **aristas**) son pares sin orden
+  (`u — v`); la relación es simétrica.
+- **Grafo valorado** — cuando sus arcos tienen un **factor de peso** asociado (por
+  ejemplo, la distancia entre dos ciudades).
+
+Otros conceptos clave: dos vértices son **adyacentes** si un arco los une directamente;
+el **grado** de un vértice (en un grafo no dirigido) es el número de aristas que lo tocan;
+en un grafo dirigido se distingue **grado de entrada** (arcos que llegan) y **grado de
+salida** (arcos que salen).
+
+## Caminos y ciclos
+
+Un **camino** entre dos vértices es la secuencia de vértices conectados por arcos entre
+uno y otro; su **longitud** es el número de arcos que lo forman. Un camino es **simple**
+si no repite vértices. Un **ciclo** es un camino simple cerrado (empieza y termina en el
+mismo vértice) de longitud al menos 2.
+
+## Conectividad
+
+- **Grafo no dirigido conexo** — existe un camino entre cualquier par de vértices.
+- **Grafo dirigido fuertemente conexo** — existe un camino entre cualquier par de
+  vértices respetando la dirección de los arcos.
+
+Si un grafo no es conexo, se puede dividir en **componentes conexas**: subconjuntos de
+vértices donde sí hay camino entre cualquier par dentro del mismo subconjunto.
+
+## Representación
+
+- **Matriz de adyacencia** (estática) — una matriz `n×n` donde la celda `(i, j)` indica si
+  hay arco entre los vértices `i` y `j` (o el peso, si el grafo es valorado). Simple, pero
+  desperdicia memoria cuando hay muchos vértices y pocos arcos (muchos ceros).
+  Insertar/eliminar un arco es O(1).
+- **Lista de adyacencia** (dinámica) — cada vértice mantiene su propia lista de los
+  vértices con los que tiene arco. Más eficiente en memoria cuando el grafo es disperso
+  (pocos arcos relativos a los vértices posibles).
+
+## Recorridos
+
+Para visitar todos los vértices alcanzables desde uno de partida:
+
+- **Recorrido en anchura (BFS)** — usa una **cola**: se encola el vértice inicial, y en
+  cada paso se desencola un vértice, se muestra, y se encolan sus adyacentes no
+  visitados. Visita los vértices por niveles de cercanía.
+- **Recorrido en profundidad (DFS)** — usa una **pila** (o recursión): se avanza tan
+  lejos como sea posible por una rama antes de retroceder. Visita ramas completas antes
+  de pasar a la siguiente.
+
+Ambos recorridos sirven para determinar si un grafo es conexo: si un recorrido desde
+cualquier vértice visita a todos los demás, el grafo es conexo; si no, cada recorrido
+revela una componente conexa distinta.
+
+## Más allá de lo básico
+
+Los materiales descargables cubren también árboles de expansión, y los algoritmos de
+Dijkstra (ruta más corta) y Floyd-Warshall (rutas más cortas entre todos los pares de
+vértices) — temas centrales del segundo parcial que se construyen sobre estos
+conceptos fundamentales.

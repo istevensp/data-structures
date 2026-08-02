@@ -7,4 +7,33 @@ parcial: 1
 topic: conjuntos
 ---
 
-{/* TODO: contenido docente */}
+Un conjunto (`Set`) es una colección que **no permite elementos duplicados** — a
+diferencia de una lista, no importa el orden ni la posición de un elemento, solo si
+pertenece o no al conjunto. La interfaz `Set<E>` de Java extiende `Collection<E>` y
+tiene tres implementaciones principales, que difieren en cómo ordenan (o no) sus
+elementos.
+
+## Implementaciones de `Set` en Java
+
+- **`HashSet<E>`** — basado en tabla hash. No garantiza ningún orden de recorrido;
+  operaciones como `add`, `remove` y `contains` son en promedio O(1). Es la opción por
+  defecto cuando el orden no importa.
+- **`LinkedHashSet<E>`** — igual que `HashSet`, pero mantiene el **orden de inserción**
+  al recorrerlo, a costa de un poco más de memoria (una lista enlazada interna además de
+  la tabla hash).
+- **`TreeSet<E>`** — mantiene los elementos **ordenados** (según su orden natural, o un
+  `Comparator` provisto), a costa de que sus operaciones son O(log n) en vez de O(1).
+
+## Operaciones típicas
+
+`add(elemento)`, `remove(elemento)`, `contains(elemento)`, `size()`, además de las
+operaciones propias de la teoría de conjuntos: unión (`addAll`), intersección
+(`retainAll`) y diferencia (`removeAll`) entre dos conjuntos.
+
+## Cuándo usar cada uno
+
+- Necesitas solo verificar pertenencia, sin importar el orden → `HashSet`.
+- Necesitas recorrer los elementos en el mismo orden en que los agregaste →
+  `LinkedHashSet`.
+- Necesitas los elementos siempre ordenados (por ejemplo, para recorrerlos de menor a
+  mayor) → `TreeSet`.

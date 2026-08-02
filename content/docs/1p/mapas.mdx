@@ -7,4 +7,33 @@ parcial: 1
 topic: mapas
 ---
 
-{/* TODO: contenido docente */}
+Un mapa (`Map<K, V>`) asocia **claves únicas** a **valores** — a diferencia de un `Set`,
+cada elemento es un par clave-valor, y la clave sirve para acceder directamente al valor
+sin tener que recorrer toda la estructura. No implementa `Collection<E>`, porque su
+unidad no es un elemento sino un par.
+
+## Implementaciones de `Map` en Java
+
+- **`HashMap<K, V>`** — basado en tabla hash. No garantiza orden de recorrido;
+  `get`, `put` y `containsKey` son en promedio O(1). Es la opción por defecto.
+- **`LinkedHashMap<K, V>`** — igual que `HashMap`, pero mantiene el **orden de
+  inserción** de las claves al recorrerlo.
+- **`TreeMap<K, V>`** — mantiene las claves **ordenadas** (orden natural o un
+  `Comparator`), a costa de que sus operaciones sean O(log n) en vez de O(1).
+
+## Operaciones típicas
+
+`put(clave, valor)` inserta o actualiza; `get(clave)` recupera el valor asociado (o `null`
+si no existe); `containsKey(clave)` y `containsValue(valor)` verifican pertenencia;
+`remove(clave)` elimina el par; `keySet()`, `values()` y `entrySet()` devuelven vistas
+para recorrer claves, valores, o pares completos.
+
+## Cuándo usar cada uno
+
+- Acceso rápido por clave, sin importar el orden → `HashMap`.
+- Recorrer en el mismo orden en que se insertaron las claves → `LinkedHashMap`.
+- Mantener las claves siempre ordenadas → `TreeMap`.
+
+Un mapa es la estructura natural cuando el problema requiere buscar por un identificador
+en vez de por posición — por ejemplo, buscar los datos de un estudiante por su cédula,
+en vez de recorrer una lista comparando uno por uno.

@@ -7,4 +7,52 @@ parcial: 1
 topic: pilas-colas
 ---
 
-{/* TODO: contenido docente */}
+Pilas y colas son ambas listas restringidas: solo cambia **por dónde** se permite entrar
+y salir. Esa única diferencia en la disciplina de acceso determina en qué orden salen
+los elementos y para qué problemas sirve cada una.
+
+## Pila (Stack) — LIFO
+
+Los elementos se añaden y remueven por un único extremo, el **tope**. El último en
+entrar es el primero en salir (*Last In, First Out*). Como un pilo de cartas sobre un
+escritorio: la última carta que llega es la primera que se revisa.
+
+Operaciones básicas:
+
+- **`push(elemento)`** — agrega un elemento al tope; la pila crece.
+- **`pop()`** — remueve y retorna el elemento tope; error si la pila está vacía
+  (*subdesbordamiento*).
+- **`peek()`** — consulta el elemento tope sin removerlo; también falla si está vacía.
+- **`size()`** / **`isEmpty()`**.
+
+En Java, `Stack<E>` existe pero está basada en `Vector` (una implementación antigua);
+en código moderno se prefiere `Deque<E>` (`ArrayDeque` o `LinkedList`) usando
+`push()`/`pop()`, que es más eficiente y es la forma recomendada por la propia
+documentación de Java.
+
+## Cola (Queue) — FIFO
+
+Los elementos entran por un extremo (**final**) y salen por el otro (**frente**): el
+primero en llegar es el primero en salir (*First In, First Out*) — como una fila para
+comprar entradas de cine.
+
+Operaciones básicas:
+
+- **`encolar(elemento)`** — inserta al final; la cola crece.
+- **`desencolar()`** — remueve y retorna el elemento del frente; error si está vacía.
+- **`colaFrente()`** / **`colaFinal()`** — consultan sin remover.
+
+### El problema de implementar una cola con un arreglo lineal
+
+Si el frente avanza cada vez que se desencola, el espacio al inicio del arreglo queda
+desperdiciado y nunca se reutiliza — eventualmente la cola parece "llena" aunque tenga
+huecos libres al principio. La solución es un **arreglo circular**: el índice siguiente al
+último (`MAX-1`) vuelve a ser `0`, así el frente y el final recorren el arreglo en círculo y
+ningún espacio se desperdicia.
+
+### Cola de prioridad
+
+En una cola de prioridad, el orden de salida ya no depende de cuándo llegó el elemento,
+sino de su **prioridad**: en una cola de prioridad ascendente se desencola siempre el
+elemento más pequeño; en una descendente, el más grande. Dentro de una misma
+prioridad, los elementos siguen comportándose como una cola normal (FIFO).

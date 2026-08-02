@@ -7,4 +7,70 @@ parcial: 2
 topic: arboles
 ---
 
-{/* TODO: contenido docente */}
+Un árbol es una estructura jerárquica: a diferencia de listas/pilas/colas, cada elemento
+(nodo) puede tener varios "siguientes" (hijos), no solo uno. Esto permite representar
+relaciones de orden y jerarquía que una estructura lineal no puede.
+
+## Árbol Binario de Búsqueda (ABB)
+
+Organiza los datos de forma ordenada: en cada nodo, todo el subárbol izquierdo tiene
+claves **menores**, y todo el subárbol derecho tiene claves **mayores**. Esto hace que
+buscar, insertar y eliminar sean en promedio O(log n) — el mismo principio de la
+búsqueda binaria, aplicado a una estructura enlazada en vez de un arreglo.
+
+**El problema:** si los datos se insertan ya ordenados (creciente o decreciente), el árbol
+degenera en una lista lineal y pierde toda su eficiencia (las operaciones pasan a O(n)).
+
+## Árbol AVL: un ABB que se autobalancea
+
+Un árbol AVL (Adelson-Velsky y Landis) es un ABB que mantiene el equilibrio en todo
+momento, evitando el problema de degeneración. Cada nodo tiene un **factor de
+equilibrio**:
+
+```
+F.E. = altura(subárbol izquierdo) − altura(subárbol derecho)
+```
+
+El F.E. de todo nodo debe mantenerse en el rango **[-1, 1]**. Cuando una inserción
+rompe ese rango, se aplica una **rotación** para restaurar el equilibrio:
+
+- **Rotación simple** — cuando el desbalance está "en línea recta" (Izquierda-Izquierda
+  o Derecha-Derecha): una sola rotación hacia el lado contrario resuelve el problema.
+- **Rotación doble** — cuando el desbalance forma un "zigzag" (Izquierda-Derecha o
+  Derecha-Izquierda): se necesitan dos rotaciones combinadas.
+
+Gracias a este autobalanceo, un AVL garantiza O(log n) en búsqueda, inserción y
+eliminación, incluso con datos que llegan ya ordenados — el peor caso del ABB simple.
+
+## Árbol Heap
+
+Un heap es un árbol binario **completo** (todos los niveles llenos excepto quizás el
+último, que se llena de izquierda a derecha) que cumple la **propiedad de heap**:
+
+- **Max-heap**: cada nodo es mayor o igual que sus hijos → el máximo está en la raíz.
+- **Min-heap**: cada nodo es menor o igual que sus hijos → el mínimo está en la raíz.
+
+A diferencia de un ABB, un heap **no está totalmente ordenado** — solo garantiza el
+orden entre un nodo y sus hijos directos, no entre hermanos. Por eso es ineficiente para
+buscar un valor arbitrario, pero óptimo para acceder siempre al extremo (máximo o
+mínimo) en O(1).
+
+### Representación con arreglos
+
+Un heap se representa de forma compacta en un arreglo, sin punteros: para un nodo en
+la posición `i`, su hijo izquierdo está en `2i + 1`, el derecho en `2i + 2`, y su padre en
+`(i - 1) / 2` (división entera).
+
+### Operaciones
+
+- **Insertar** — se agrega al final del arreglo, y se aplica *heapify up* (intercambiar con
+  el padre mientras se viole la propiedad).
+- **Eliminar la raíz** — se reemplaza con el último elemento del arreglo, se elimina ese
+  último, y se aplica *heapify down* desde la raíz.
+
+Ambas son O(log n); consultar la raíz es O(1).
+
+### Aplicaciones
+
+Colas de prioridad, HeapSort, el algoritmo de Dijkstra (ruta más corta) y compresión de
+Huffman.

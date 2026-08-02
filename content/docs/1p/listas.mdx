@@ -7,4 +7,66 @@ parcial: 1
 topic: listas
 ---
 
-{/* TODO: contenido docente */}
+Una lista es una colección ordenada de elementos que permite duplicados y acceso por
+posición. La forma en que cada variante almacena y enlaza sus elementos internamente
+determina qué operaciones son rápidas y cuáles son costosas — esa es la decisión de
+diseño central al elegir una lista para un problema dado.
+
+## Tipos de listas
+
+### ArrayList (array dinámico)
+
+Almacena los elementos en un bloque de memoria contiguo. Cuando se llena, duplica su
+capacidad y copia todos los elementos al nuevo array. Acceso por índice en O(1);
+inserción al final en O(1) (salvo redimensionamiento); inserción al inicio o en el medio en
+O(n), porque hay que desplazar los elementos siguientes. Ideal cuando el acceso por
+índice es frecuente y las inserciones intermedias son raras — inventarios, tablas de
+puntuaciones, resultados de búsqueda.
+
+### Lista enlazada simple
+
+Cada nodo guarda un dato y una referencia al siguiente nodo; no requiere memoria
+contigua ni redimensionamiento. Inserción al inicio en O(1); inserción al final o en medio,
+y cualquier acceso por posición, en O(n) por el recorrido secuencial. Útil para pilas,
+historiales y buffers donde solo se agrega o quita desde un extremo.
+
+### Lista doblemente enlazada
+
+Igual que la simple, pero cada nodo también referencia al nodo anterior, permitiendo
+recorrer la lista en ambas direcciones. Inserción al inicio o al final en O(1); en el medio,
+O(n) para llegar hasta la posición. Común en navegadores (adelante/atrás),
+reproductores de música y sistemas con inserciones/eliminaciones frecuentes en
+cualquier posición.
+
+### Lista circular simple
+
+Una lista enlazada simple donde el último nodo apunta de vuelta al primero, formando un
+ciclo. Inserción al inicio en O(1), al final en O(n). Se usa en buffers circulares (audio/video
+en tiempo real) y en turnos rotativos (juegos, colas de impresión).
+
+### Lista circular doble
+
+Combina el enlace doble con el ciclo: navegación continua en ambas direcciones.
+Inserción en cualquier extremo en O(1), en el medio en O(n). Aparece en planificadores de
+sistemas operativos y rotación cíclica de recursos (ofertas, turnos, vehículos en
+transporte público).
+
+## Comparación rápida
+
+| Estructura | Acceso directo | Inserción al inicio | Inserción en el medio | Inserción al final |
+|---|---|---|---|---|
+| ArrayList | O(1) | O(n) | O(n) | O(1) |
+| Enlazada simple | O(n) | O(1) | O(n) | O(n) |
+| Doblemente enlazada | O(n) | O(1) | O(n) | O(1) |
+| Circular simple | O(n) | O(1) | O(n) | O(n) |
+| Circular doble | O(n) | O(1) | O(n) | O(1) |
+
+## ArrayList vs. LinkedList en Java
+
+En la práctica, la elección casi siempre se reduce a estas dos:
+
+- **ArrayList** cuando el acceso por índice es frecuente y hay pocas inserciones o
+  eliminaciones intermedias — usa menos memoria y itera más rápido.
+- **LinkedList** cuando hay muchas inserciones/eliminaciones en posiciones arbitrarias y
+  el acceso por índice no es crítico — evita mover elementos, a costa de más memoria
+  por los punteros extra de cada nodo.

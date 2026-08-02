@@ -7,4 +7,46 @@ parcial: 1
 topic: comparadores
 ---
 
-{/* TODO: contenido docente */}
+Buscar un elemento exacto en una lista con `contains`/`equals` funciona cuando ya
+conoces la instancia completa que buscas — pero no sirve para buscar por un atributo
+específico (por ejemplo, "todos los clientes de Guayaquil") sin escribir un método nuevo
+para cada criterio. Los comparadores resuelven ese problema generalizando el criterio de
+búsqueda u orden.
+
+## La interfaz `Comparator<E>`
+
+Provee un orden para colecciones de objetos que no tienen un orden natural, mediante un
+único método:
+
+```
+int compare(T object1, T object2)
+```
+
+| Valor retornado | Significado |
+|---|---|
+| Negativo | `object1 < object2` |
+| Cero | `object1 == object2` |
+| Positivo | `object1 > object2` |
+
+Con un `Comparator`, un método genérico como `findAll(Comparator<E> cmp, E object)`
+puede buscar por cualquier criterio, sin necesitar un método distinto por atributo.
+
+## Formas de usar un `Comparator`
+
+1. **Instancia con nombre** — se declara una vez y se reutiliza:
+   ```
+   Comparator<Customer> cmpByCity = new Comparator<Customer>() {
+     public int compare(Customer o1, Customer o2) {
+       return o1.getCity().equals(o2.getCity()) ? 0 : 1;
+     }
+   };
+   ```
+2. **Clase anónima inline** — se define directamente como argumento, sin variable
+   intermedia.
+3. **Expresión lambda** — la forma más concisa en Java moderno:
+   ```
+   allCustomers.findAll((o1, o2) -> o1.getCity().equals(o2.getCity()) ? 0 : 1, customerGye);
+   ```
+
+Las tres formas son equivalentes en comportamiento; la lambda es preferible cuando el
+comparador es simple y de un solo uso.

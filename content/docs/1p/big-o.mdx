@@ -7,4 +7,32 @@ parcial: 1
 topic: big-o
 ---
 
-{/* TODO: contenido docente */}
+La notación O grande describe cómo cambia el tiempo de ejecución (o la memoria) de un
+algoritmo a medida que crece el tamaño de la entrada. La "O" se lee **"en el peor de los
+casos"**: no importa cuántas operaciones tome un caso favorable, lo que interesa es el
+límite superior sobre cualquier entrada posible de tamaño *n*.
+
+## Complejidades comunes
+
+- **O(1) — constante.** El algoritmo hace el mismo trabajo sin importar el tamaño de la
+  entrada. Ejemplo: calcular `a + b + c`.
+- **O(log n) — logarítmica.** Cada paso descarta una fracción de los datos. Ejemplo:
+  búsqueda binaria sobre un arreglo ordenado — buscar un valor entre *n* elementos toma
+  aproximadamente log₂(n) comparaciones, porque cada comparación descarta la mitad
+  restante.
+- **O(n) — lineal.** El trabajo crece proporcionalmente a la entrada. Ejemplo: en el peor
+  caso, encontrar un elemento revisando una caja a la vez entre *n* cajas.
+- **O(n²) — cuadrática.** Ejemplo: revisar una cuadrícula de *n*×*n* casillas una por una.
+- **O(n!) — factorial.** Crece de forma explosiva incluso con entradas pequeñas. Ejemplo
+  clásico: el problema del agente viajero resuelto por fuerza bruta — con 10 ciudades ya
+  son 3'628.800 rutas posibles a evaluar; con 28, la cifra tiene más de 30 dígitos.
+
+## ¿Por qué importa en este curso?
+
+- Distintas operaciones sobre un mismo TDA (tipo abstracto de datos) tienen distinta
+  eficiencia — por ejemplo, en una lista, acceder por índice y buscar un valor no cuestan
+  lo mismo.
+- La misma operación implementada en distintos TDAs puede tener distinta complejidad
+  (acceso por índice es O(1) en un ArrayList, pero O(n) en una lista enlazada).
+- Conocer la complejidad ayuda a elegir la estructura correcta para un problema,
+  especialmente en dispositivos con recursos limitados o sistemas de tiempo real.

@@ -7,4 +7,42 @@ parcial: 1
 topic: recursividad
 ---
 
-{/* TODO: contenido docente */}
+Un proceso recursivo es aquel que se llama a sí mismo. Sin una condición de salida (o
+**caso base**), la llamada se repite indefinidamente hasta agotar la pila de llamadas del
+programa (`StackOverflowError` en Java) — la recursión y la pila están directamente
+relacionadas, porque cada llamada recursiva se apila esperando a que la siguiente
+termine.
+
+## Estructura de un método recursivo
+
+Todo método recursivo necesita dos partes:
+
+1. **Caso base** — la condición que detiene la recursión y retorna un valor directo, sin
+   volver a llamarse.
+2. **Llamada recursiva** — el método se invoca a sí mismo con un problema más
+   pequeño, acercándose al caso base.
+
+Ejemplo clásico, el factorial:
+
+```java
+static int factorial(int n) {
+  if (n == 0) {
+    return 1; // caso base
+  } else {
+    return n * factorial(n - 1); // llamada recursiva
+  }
+}
+```
+
+`factorial(3)` se resuelve como `3 * (2 * (1 * factorial(0)))`, y `factorial(0)` retorna `1`
+directamente — sin ese caso base, la llamada nunca terminaría.
+
+## Por qué importa
+
+Hay problemas que son recursivos por naturaleza — se definen en términos de sí mismos.
+La sucesión de Fibonacci es el ejemplo típico: cada término es la suma de los dos
+anteriores (`fibonacci(n) = fibonacci(n-1) + fibonacci(n-2)`, con `fibonacci(1) = 0` y
+`fibonacci(2) = 1` como casos base). El mismo patrón aparece en estructuras naturales
+—ramificación de árboles, espirales de conchas, distribución de semillas— y es la base
+para operar estructuras de datos que son ellas mismas recursivas, como los árboles y los
+grafos que se cubren en el segundo parcial.

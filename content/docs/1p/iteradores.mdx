@@ -7,4 +7,48 @@ parcial: 1
 topic: iteradores
 ---
 
-{/* TODO: contenido docente */}
+Un iterador es una abstracción que permite recorrer los elementos de una colección sin
+que quien la usa tenga que conocer su estructura interna (por ejemplo, sin instanciar un
+nodo viajero manualmente sobre una lista enlazada). `ArrayList` y `LinkedList` se
+recorren con exactamente el mismo código, aunque por dentro sean muy distintas.
+
+## La interfaz `Iterator<E>`
+
+Toda clase que la implementa debe definir dos métodos:
+
+```java
+boolean hasNext();  // ¿hay un siguiente elemento?
+E next();            // devuelve el elemento actual y avanza el cursor
+```
+
+Patrón de recorrido estándar:
+
+```java
+Iterator<E> it = coleccion.iterator();
+while (it.hasNext()) {
+  System.out.println(it.next());
+}
+```
+
+El método `iterator()` debe devolver **una instancia nueva cada vez** que se lo invoca —
+nunca el mismo iterador dos veces — porque cada instancia guarda su propio estado
+(en qué punto del recorrido va). Reutilizar un iterador entre dos recorridos distintos
+causaría conflictos.
+
+## Cómo implementar un iterador propio
+
+1. **Clase que implementa `Iterator<E>`** — una clase con nombre, con su propia
+   implementación de `hasNext()`/`next()`.
+2. **Clase anónima** — se define directamente dentro del método `iterator()`, sin crear
+   un archivo aparte.
+
+Para que una estructura propia también soporte el `for-each` de Java
+(`for (Item item : miEstructura) { ... }`), debe implementar la interfaz `Iterable<E>`,
+cuyo único método (`iterator()`) devuelve el `Iterator<E>` correspondiente.
+
+## `ListIterator<E>`: recorrido en ambas direcciones
+
+Además de `hasNext()`/`next()`, agrega `hasPrevious()`/`previous()` para retroceder, más
+`nextIndex()`/`previousIndex()`, y `add()`/`set()`/`remove()` para modificar la lista
+durante el recorrido — útil cuando se necesita navegar una lista en cualquier dirección,
+no solo hacia adelante.
