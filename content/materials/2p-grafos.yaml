@@ -1,0 +1,62 @@
+topic: "grafos"
+parcial: 2
+title: "Grafos"
+source: "Estructuras/2P/Grafos"
+generated: "2026-08-01"
+items:
+  - title: "20 EstructurasDeDatos Grafos (1)"
+    original: "20_EstructurasDeDatos_Grafos (1).pdf"
+    type: "pdf"
+    file: "/files/2p/grafos/20-estructurasdedatos-grafos-1.pdf"
+    size: "597 KB"
+    bytes: 610988
+    pages: 39
+  - title: "21 EstructurasDeDatos Grafos AlgoritmoDeDijsktra"
+    original: "21_EstructurasDeDatos_Grafos_AlgoritmoDeDijsktra.pdf"
+    type: "pdf"
+    file: "/files/2p/grafos/21-estructurasdedatos-grafos-algoritmodedijsktra.pdf"
+    size: "175 KB"
+    bytes: 179659
+    pages: 5
+  - title: "22 EstructurasDeDatos AlgoritmosFloyd Warshall"
+    original: "22_EstructurasDeDatos_AlgoritmosFloyd_Warshall.pdf"
+    type: "pdf"
+    file: "/files/2p/grafos/22-estructurasdedatos-algoritmosfloyd-warshall.pdf"
+    size: "850 KB"
+    bytes: 870219
+    pages: 85
+  - title: "23 EstructurasDeDatos Grafos ÁrbolDeExpansión"
+    original: "23_EstructurasDeDatos_Grafos_ÁrbolDeExpansión.pdf"
+    type: "pdf"
+    file: "/files/2p/grafos/23-estructurasdedatos-grafos-arboldeexpansion.pdf"
+    size: "253 KB"
+    bytes: 258896
+    pages: 13
+  - title: "EDD GrafoEjercicioRed"
+    original: "EDD_GrafoEjercicioRed.pdf"
+    type: "pdf"
+    file: "/files/2p/grafos/edd-grafoejerciciored.pdf"
+    size: "117 KB"
+    bytes: 120245
+    pages: 3
+  - title: "EDD GrafosArbolesDeExpansion"
+    original: "EDD_GrafosArbolesDeExpansion.pdf"
+    type: "pdf"
+    file: "/files/2p/grafos/edd-grafosarbolesdeexpansion.pdf"
+    size: "142 KB"
+    bytes: 145805
+    pages: 7
+  - title: "EDD GrafosDijsktra"
+    original: "EDD_GrafosDijsktra.pdf"
+    type: "pdf"
+    file: "/files/2p/grafos/edd-grafosdijsktra.pdf"
+    size: "145 KB"
+    bytes: 148432
+    pages: 7
+  - title: "EDD GrafosFloyd Warshall"
+    original: "EDD_GrafosFloyd_Warshall.pdf"
+    type: "pdf"
+    file: "/files/2p/grafos/edd-grafosfloyd-warshall.pdf"
+    size: "129 KB"
+    bytes: 132015
+    pages: 6

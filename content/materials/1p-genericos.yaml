@@ -1,0 +1,52 @@
+topic: "genericos"
+parcial: 1
+title: "Genéricos"
+source: "Estructuras/1P/Genericos"
+generated: "2026-08-01"
+items:
+  - title: "02 TiposDeDatos V1.0 (1)"
+    original: "02_TiposDeDatos_V1.0 (1).pdf"
+    type: "pdf"
+    file: "/files/1p/genericos/02-tiposdedatos-v1-0-1.pdf"
+    size: "1015 KB"
+    bytes: 1039788
+    pages: 19
+  - title: "03 JavaGenerics V1.0 (2)"
+    original: "03_JavaGenerics_V1.0 (2).pdf"
+    type: "pdf"
+    file: "/files/1p/genericos/03-javagenerics-v1-0-2.pdf"
+    size: "2.6 MB"
+    bytes: 2753934
+    pages: 74
+  - title: "AclaracionDudaMetodoEstatico (1)"
+    original: "AclaracionDudaMetodoEstatico (1).pdf"
+    type: "pdf"
+    file: "/files/1p/genericos/aclaraciondudametodoestatico-1.pdf"
+    size: "209 KB"
+    bytes: 213875
+    pages: 1
+  - title: "MultiplesParametrosGenericos (1)"
+    original: "MultiplesParametrosGenericos (1).pdf"
+    type: "pdf"
+    file: "/files/1p/genericos/multiplesparametrosgenericos-1.pdf"
+    size: "296 KB"
+    bytes: 302676
+    pages: 7
+  - title: "Generics (2)"
+    original: "Generics (2).java"
+    type: "java"
+    code: "1p/genericos/Generics (2).java"
+    size: "9.7 KB"
+    bytes: 9926
+    package: null
+    class: "Caja"
+    lines: 344
+  - title: "MultiplesParametrosGenericos (1)"
+    original: "MultiplesParametrosGenericos (1).java"
+    type: "java"
+    code: "1p/genericos/MultiplesParametrosGenericos (1).java"
+    size: "6.7 KB"
+    bytes: 6880
+    package: null
+    class: "MultiComparator"
+    lines: 173

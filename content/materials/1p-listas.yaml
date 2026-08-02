@@ -1,0 +1,46 @@
+topic: "listas"
+parcial: 1
+title: "Listas"
+source: "Estructuras/1P/Listas"
+generated: "2026-08-01"
+items:
+  - title: "06 Listas Parte1 V1 0"
+    original: "06_Listas_Parte1_V1-0.pdf"
+    type: "pdf"
+    file: "/files/1p/listas/06-listas-parte1-v1-0.pdf"
+    size: "398 KB"
+    bytes: 408056
+    pages: 19
+  - title: "07 Listas Parte2 V1 0"
+    original: "07_Listas_Parte2_V1-0.pdf"
+    type: "pdf"
+    file: "/files/1p/listas/07-listas-parte2-v1-0.pdf"
+    size: "990 KB"
+    bytes: 1013602
+    pages: 23
+  - title: "AboutNoteClass ArrayInstance"
+    original: "AboutNoteClass_ArrayInstance.pdf"
+    type: "pdf"
+    file: "/files/1p/listas/aboutnoteclass-arrayinstance.pdf"
+    size: "186 KB"
+    bytes: 190173
+    pages: 4
+  - title: "DiferenciaEntreListas"
+    original: "DiferenciaEntreListas.pdf"
+    type: "pdf"
+    file: "/files/1p/listas/diferenciaentrelistas.pdf"
+    size: "215 KB"
+    bytes: 220073
+    pages: 4
+  - title: "ResumenListas"
+    original: "ResumenListas.pdf"
+    type: "pdf"
+    file: "/files/1p/listas/resumenlistas.pdf"
+    size: "224 KB"
+    bytes: 229326
+    pages: 11
+  - title: "PlantillaListas"
+    original: "PlantillaListas.txt"
+    type: "link"
+    url: "https://drive.google.com/drive/folders/17EfyNeyZU5ZOa2M5D5jd51sc2yPhtrGC"
+    access: "institucional"

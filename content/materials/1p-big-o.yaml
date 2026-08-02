@@ -1,0 +1,68 @@
+topic: "big-o"
+parcial: 1
+title: "Big(O)"
+source: "Estructuras/1P/Big(O)"
+generated: "2026-08-01"
+items:
+  - title: "05 NotacionOGrande V1.0"
+    original: "05_NotacionOGrande_V1.0.pdf"
+    type: "pdf"
+    file: "/files/1p/big-o/05-notacionogrande-v1-0.pdf"
+    size: "1.4 MB"
+    bytes: 1458871
+    pages: 29
+  - title: "BúsquedaBinaria"
+    original: "BúsquedaBinaria.pdf"
+    type: "pdf"
+    file: "/files/1p/big-o/busquedabinaria.pdf"
+    size: "294 KB"
+    bytes: 301432
+    pages: 14
+  - title: "DetallesNotacionOGrande"
+    original: "DetallesNotacionOGrande.pdf"
+    type: "pdf"
+    file: "/files/1p/big-o/detallesnotacionogrande.pdf"
+    size: "239 KB"
+    bytes: 244740
+    pages: 4
+  - title: "ProblemaAgenteViajero"
+    original: "ProblemaAgenteViajero.pdf"
+    type: "pdf"
+    file: "/files/1p/big-o/problemaagenteviajero.pdf"
+    size: "233 KB"
+    bytes: 238654
+    pages: 8
+  - title: "RepasoComaparable (1)"
+    original: "RepasoComaparable (1).pdf"
+    type: "pdf"
+    file: "/files/1p/big-o/repasocomaparable-1.pdf"
+    size: "111 KB"
+    bytes: 113258
+    pages: 3
+  - title: "AgenteViajero"
+    original: "AgenteViajero.java"
+    type: "java"
+    code: "1p/big-o/AgenteViajero.java"
+    size: "5.6 KB"
+    bytes: 5761
+    package: null
+    class: "AgenteViajero"
+    lines: 134
+  - title: "BigO"
+    original: "BigO.java"
+    type: "java"
+    code: "1p/big-o/BigO.java"
+    size: "14 KB"
+    bytes: 14573
+    package: null
+    class: "ArregloEjemplo"
+    lines: 393
+  - title: "BusquedaBinaria"
+    original: "BusquedaBinaria.java"
+    type: "java"
+    code: "1p/big-o/BusquedaBinaria.java"
+    size: "10 KB"
+    bytes: 10501
+    package: null
+    class: "BusquedaBinaria"
+    lines: 324

@@ -1,0 +1,104 @@
+topic: "arboles"
+parcial: 2
+title: "Árboles"
+source: "Estructuras/2P/Arboles"
+generated: "2026-08-01"
+items:
+  - title: "17 Árboles Balanceados"
+    original: "17_Árboles_Balanceados.pdf"
+    type: "pdf"
+    file: "/files/2p/arboles/17-arboles-balanceados.pdf"
+    size: "807 KB"
+    bytes: 826037
+    pages: 75
+  - title: "AVL LL (1)"
+    original: "AVL_LL (1).pdf"
+    type: "pdf"
+    file: "/files/2p/arboles/avl-ll-1.pdf"
+    size: "91 KB"
+    bytes: 93199
+    pages: 4
+  - title: "AVL LR (1)"
+    original: "AVL_LR (1).pdf"
+    type: "pdf"
+    file: "/files/2p/arboles/avl-lr-1.pdf"
+    size: "84 KB"
+    bytes: 85834
+    pages: 4
+  - title: "AVL RL (1)"
+    original: "AVL_RL (1).pdf"
+    type: "pdf"
+    file: "/files/2p/arboles/avl-rl-1.pdf"
+    size: "82 KB"
+    bytes: 84427
+    pages: 4
+  - title: "AVL RR (1)"
+    original: "AVL_RR (1).pdf"
+    type: "pdf"
+    file: "/files/2p/arboles/avl-rr-1.pdf"
+    size: "76 KB"
+    bytes: 77462
+    pages: 4
+  - title: "BusquedaBinaria (2)"
+    original: "BusquedaBinaria (2).pdf"
+    type: "pdf"
+    file: "/files/2p/arboles/busquedabinaria-2.pdf"
+    size: "105 KB"
+    bytes: 107302
+    pages: 4
+  - title: "EDD Arboles ParcialmenteOrdenados Heaps"
+    original: "EDD_Arboles_ParcialmenteOrdenados_Heaps.pdf"
+    type: "pdf"
+    file: "/files/2p/arboles/edd-arboles-parcialmenteordenados-heaps.pdf"
+    size: "187 KB"
+    bytes: 191930
+    pages: 17
+  - title: "EDD Arboles Parte 1 (1)"
+    original: "EDD_Arboles_Parte_1 (1).pdf"
+    type: "pdf"
+    file: "/files/2p/arboles/edd-arboles-parte-1-1.pdf"
+    size: "150 KB"
+    bytes: 153318
+    pages: 13
+  - title: "EDD Arboles Parte 2 (1)"
+    original: "EDD_Arboles_Parte_2 (1).pdf"
+    type: "pdf"
+    file: "/files/2p/arboles/edd-arboles-parte-2-1.pdf"
+    size: "186 KB"
+    bytes: 190450
+    pages: 24
+  - title: "HEAP UPDATE"
+    original: "HEAP___UPDATE.pdf"
+    type: "pdf"
+    file: "/files/2p/arboles/heap-update.pdf"
+    size: "284 KB"
+    bytes: 290820
+    pages: 8
+  - title: "HEAPS (1)"
+    original: "HEAPS (1).pdf"
+    type: "pdf"
+    file: "/files/2p/arboles/heaps-1.pdf"
+    size: "126 KB"
+    bytes: 128766
+    pages: 4
+  - title: "15 Árboles Parte1"
+    original: "15_Árboles_Parte1.pptx"
+    type: "pptx"
+    file: "/files/2p/arboles/15-arboles-parte1.pptx"
+    size: "124 KB"
+    bytes: 126565
+    slides: 10
+  - title: "16 Árboles Parte2"
+    original: "16_Árboles_Parte2.pptx"
+    type: "pptx"
+    file: "/files/2p/arboles/16-arboles-parte2.pptx"
+    size: "196 KB"
+    bytes: 200716
+    slides: 29
+  - title: "17 Árboles Balanceados"
+    original: "17_Árboles_Balanceados.pptx"
+    type: "pptx"
+    file: "/files/2p/arboles/17-arboles-balanceados.pptx"
+    size: "885 KB"
+    bytes: 906621
+    slides: 88

@@ -1,0 +1,51 @@
+topic: "mapas"
+parcial: 1
+title: "Mapas"
+source: "Estructuras/1P/Mapas"
+generated: "2026-08-01"
+items:
+  - title: "MapaComparador"
+    original: "MapaComparador.java"
+    type: "java"
+    code: "1p/mapas/MapaComparador.java"
+    size: "2.1 KB"
+    bytes: 2195
+    package: null
+    class: "AgendaHashMap"
+    lines: 59
+  - title: "EjemplosAgendaMapas"
+    original: "EjemplosAgendaMapas.zip"
+    type: "zip"
+    file: "/files/1p/mapas/ejemplosagendamapas.zip"
+    size: "38 KB"
+    bytes: 39032
+    entries: 4
+    contents:
+      - "AgendaHashMap.java"
+      - "AgendaLinkedHashMap.java"
+      - "AgendaTreeMap.java"
+      - "Diferencias_Mapas_Java.docx"
+  - title: "EjemplosAgendaMapas Complejos"
+    original: "EjemplosAgendaMapas_Complejos.zip"
+    type: "zip"
+    file: "/files/1p/mapas/ejemplosagendamapas-complejos.zip"
+    size: "2.8 KB"
+    bytes: 2886
+    entries: 2
+    contents:
+      - "AgendaCompleja.java"
+      - "AgendaMultivaluada.java"
+  - title: "EjemplosAgendaMapas FuncionesComentadas"
+    original: "EjemplosAgendaMapas_FuncionesComentadas.zip"
+    type: "zip"
+    file: "/files/1p/mapas/ejemplosagendamapas-funcionescomentadas.zip"
+    size: "2.2 KB"
+    bytes: 2208
+    entries: 1
+    contents:
+      - "AgendaHashMapFunciones.java"
+  - title: "Map, HashMap, LinkedHashMap, TreeMap"
+    original: "Map, HashMap, LinkedHashMap, TreeMap.txt"
+    type: "link"
+    url: "https://drive.google.com/file/d/1umZ5eMoLPQC1xBjCEFkkHngP8tGMuabz/view"
+    access: "institucional"

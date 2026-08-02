@@ -1,0 +1,75 @@
+topic: "pilas-colas"
+parcial: 1
+title: "Pilas y Colas"
+source: "Estructuras/1P/Pilas y Colas"
+generated: "2026-08-01"
+items:
+  - title: "10 Pila V1.0"
+    original: "10_Pila_V1.0.pdf"
+    type: "pdf"
+    file: "/files/1p/pilas-colas/10-pila-v1-0.pdf"
+    size: "1.2 MB"
+    bytes: 1247823
+    pages: 22
+  - title: "13 Cola"
+    original: "13_Cola.pdf"
+    type: "pdf"
+    file: "/files/1p/pilas-colas/13-cola.pdf"
+    size: "791 KB"
+    bytes: 809998
+    pages: 24
+  - title: "Pila ejemploAgenda"
+    original: "Pila_ejemploAgenda.java"
+    type: "java"
+    code: "1p/pilas-colas/Pila_ejemploAgenda.java"
+    size: "13 KB"
+    bytes: 12921
+    package: null
+    class: null
+    lines: 371
+  - title: "SistemaDeTareasPrioritarias"
+    original: "SistemaDeTareasPrioritarias.java"
+    type: "java"
+    code: "1p/pilas-colas/SistemaDeTareasPrioritarias.java"
+    size: "1.7 KB"
+    bytes: 1749
+    package: null
+    class: "SistemaDeTareasPrioritarias"
+    lines: 54
+  - title: "Colas Implementadas"
+    original: "Colas_Implementadas.zip"
+    type: "zip"
+    file: "/files/1p/pilas-colas/colas-implementadas.zip"
+    size: "6.2 KB"
+    bytes: 6354
+    entries: 5
+    contents:
+      - "ColaArrayList.java"
+      - "ColaLinkedList.java"
+      - "ColaDoubleLinked.java"
+      - "ColaCircular.java"
+      - "ColaDoubleCircular.java"
+  - title: "EjercicioPacientesComparadores (1)"
+    original: "EjercicioPacientesComparadores (1).zip"
+    type: "zip"
+    file: "/files/1p/pilas-colas/ejerciciopacientescomparadores-1.zip"
+    size: "4.0 KB"
+    bytes: 4139
+    entries: 3
+    contents:
+      - "Paciente.java"
+      - "ComparadoresPaciente.java"
+      - "Main.java"
+  - title: "Pilas Implementadas"
+    original: "Pilas_Implementadas.zip"
+    type: "zip"
+    file: "/files/1p/pilas-colas/pilas-implementadas.zip"
+    size: "5.6 KB"
+    bytes: 5760
+    entries: 5
+    contents:
+      - "PilaArrayList.java"
+      - "PilaLinkedList.java"
+      - "PilaDoubleLinked.java"
+      - "PilaCircular.java"
+      - "PilaDoubleCircular.java"

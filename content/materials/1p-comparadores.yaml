@@ -1,0 +1,63 @@
+topic: "comparadores"
+parcial: 1
+title: "Comparadores"
+source: "Estructuras/1P/Comparadores"
+generated: "2026-08-01"
+items:
+  - title: "09 Comparators (2)"
+    original: "09_Comparators (2).pdf"
+    type: "pdf"
+    file: "/files/1p/comparadores/09-comparators-2.pdf"
+    size: "209 KB"
+    bytes: 214412
+    pages: 14
+  - title: "Anexo Comparator (3)"
+    original: "Anexo_Comparator (3).pdf"
+    type: "pdf"
+    file: "/files/1p/comparadores/anexo-comparator-3.pdf"
+    size: "858 KB"
+    bytes: 879019
+    pages: 9
+  - title: "ComoOrganizarComparator (3)"
+    original: "ComoOrganizarComparator (3).pdf"
+    type: "pdf"
+    file: "/files/1p/comparadores/comoorganizarcomparator-3.pdf"
+    size: "638 KB"
+    bytes: 653081
+    pages: 4
+  - title: "CasosDeUsoComparator (3)"
+    original: "CasosDeUsoComparator (3).java"
+    type: "java"
+    code: "1p/comparadores/CasosDeUsoComparator (3).java"
+    size: "5.6 KB"
+    bytes: 5724
+    package: null
+    class: "Main"
+    lines: 172
+  - title: "ComparatorEjemploAgenda (2)"
+    original: "ComparatorEjemploAgenda (2).java"
+    type: "java"
+    code: "1p/comparadores/ComparatorEjemploAgenda (2).java"
+    size: "6.9 KB"
+    bytes: 7026
+    package: null
+    class: null
+    lines: 175
+  - title: "ComparatorPersonalizados (3)"
+    original: "ComparatorPersonalizados (3).java"
+    type: "java"
+    code: "1p/comparadores/ComparatorPersonalizados (3).java"
+    size: "6.2 KB"
+    bytes: 6340
+    package: null
+    class: "Main"
+    lines: 205
+  - title: "EjemplosComparator (2)"
+    original: "EjemplosComparator (2).java"
+    type: "java"
+    code: "1p/comparadores/EjemplosComparator (2).java"
+    size: "4.8 KB"
+    bytes: 4878
+    package: null
+    class: "Main"
+    lines: 139

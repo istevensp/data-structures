@@ -1,0 +1,83 @@
+topic: "iteradores"
+parcial: 1
+title: "Iteradores"
+source: "Estructuras/1P/Iteradores"
+generated: "2026-08-01"
+items:
+  - title: "08 Iterators V1.0"
+    original: "08_Iterators_V1.0.pdf"
+    type: "pdf"
+    file: "/files/1p/iteradores/08-iterators-v1-0.pdf"
+    size: "420 KB"
+    bytes: 429755
+    pages: 22
+  - title: "Iteradores"
+    original: "Iteradores.pdf"
+    type: "pdf"
+    file: "/files/1p/iteradores/iteradores.pdf"
+    size: "614 KB"
+    bytes: 628853
+    pages: 12
+  - title: "EjerciciosIteradores"
+    original: "EjerciciosIteradores.java"
+    type: "java"
+    code: "1p/iteradores/EjerciciosIteradores.java"
+    size: "6.0 KB"
+    bytes: 6150
+    package: null
+    class: null
+    lines: 127
+  - title: "Iterator Arraylist EXTEND"
+    original: "Iterator_Arraylist_EXTEND.java"
+    type: "java"
+    code: "1p/iteradores/Iterator_Arraylist_EXTEND.java"
+    size: "4.7 KB"
+    bytes: 4831
+    package: null
+    class: null
+    lines: 153
+  - title: "Iterator CircleLinkedListEXTEND"
+    original: "Iterator_CircleLinkedListEXTEND.java"
+    type: "java"
+    code: "1p/iteradores/Iterator_CircleLinkedListEXTEND.java"
+    size: "2.4 KB"
+    bytes: 2467
+    package: null
+    class: "CircularSinglyLinkedListIterator"
+    lines: 87
+  - title: "Iterator CircleSimpleLinkedListEXTEND"
+    original: "Iterator_CircleSimpleLinkedListEXTEND.java"
+    type: "java"
+    code: "1p/iteradores/Iterator_CircleSimpleLinkedListEXTEND.java"
+    size: "2.2 KB"
+    bytes: 2228
+    package: null
+    class: "CircularDoublyLinkedListIterator"
+    lines: 81
+  - title: "Iterator ExampleAgenda"
+    original: "Iterator_ExampleAgenda.java"
+    type: "java"
+    code: "1p/iteradores/Iterator_ExampleAgenda.java"
+    size: "5.3 KB"
+    bytes: 5381
+    package: null
+    class: "CircularDoublyLinkedListIterator"
+    lines: 166
+  - title: "Iterator LinkedListEXTEND"
+    original: "Iterator_LinkedListEXTEND.java"
+    type: "java"
+    code: "1p/iteradores/Iterator_LinkedListEXTEND.java"
+    size: "2.9 KB"
+    bytes: 2945
+    package: null
+    class: "DoublyLinkedListIterator"
+    lines: 108
+  - title: "Iterator SimpleLinkedListEXTEND"
+    original: "Iterator_SimpleLinkedListEXTEND.java"
+    type: "java"
+    code: "1p/iteradores/Iterator_SimpleLinkedListEXTEND.java"
+    size: "2.5 KB"
+    bytes: 2569
+    package: null
+    class: "SinglyLinkedListIterator"
+    lines: 92
