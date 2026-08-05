@@ -7,70 +7,484 @@ parcial: 2
 topic: arboles
 ---
 
-Un árbol es una estructura jerárquica: a diferencia de listas/pilas/colas, cada elemento
-(nodo) puede tener varios "siguientes" (hijos), no solo uno. Esto permite representar
-relaciones de orden y jerarquía que una estructura lineal no puede.
+Un árbol es una estructura de datos **no lineal** formada por nodos conectados de manera jerárquica. A diferencia de un arreglo o una lista, un nodo puede conducir a varias ramas.
 
-## Árbol Binario de Búsqueda (ABB)
+Los árboles aparecen en sistemas de archivos, menús, índices de bases de datos, autocompletado, compiladores, colas de prioridad y búsquedas espaciales.
 
-Organiza los datos de forma ordenada: en cada nodo, todo el subárbol izquierdo tiene
-claves **menores**, y todo el subárbol derecho tiene claves **mayores**. Esto hace que
-buscar, insertar y eliminar sean en promedio O(log n) — el mismo principio de la
-búsqueda binaria, aplicado a una estructura enlazada en vez de un arreglo.
-
-**El problema:** si los datos se insertan ya ordenados (creciente o decreciente), el árbol
-degenera en una lista lineal y pierde toda su eficiencia (las operaciones pasan a O(n)).
-
-## Árbol AVL: un ABB que se autobalancea
-
-Un árbol AVL (Adelson-Velsky y Landis) es un ABB que mantiene el equilibrio en todo
-momento, evitando el problema de degeneración. Cada nodo tiene un **factor de
-equilibrio**:
-
-```
-F.E. = altura(subárbol izquierdo) − altura(subárbol derecho)
+```text
+          10
+        /    \
+       5      15
+      / \    / \
+     3   7  12  20
 ```
 
-El F.E. de todo nodo debe mantenerse en el rango **[-1, 1]**. Cuando una inserción
-rompe ese rango, se aplica una **rotación** para restaurar el equilibrio:
+En este ejemplo:
 
-- **Rotación simple** — cuando el desbalance está "en línea recta" (Izquierda-Izquierda
-  o Derecha-Derecha): una sola rotación hacia el lado contrario resuelve el problema.
-- **Rotación doble** — cuando el desbalance forma un "zigzag" (Izquierda-Derecha o
-  Derecha-Izquierda): se necesitan dos rotaciones combinadas.
+- La **raíz** es `10`.
+- Los **hijos** de `10` son `5` y `15`.
+- Las **hojas** son `3`, `7`, `12` y `20`.
+- La **altura** es `2` si se cuenta el número de aristas desde la raíz hasta la hoja más lejana.
+- Cada nodo con sus descendientes forma un **subárbol**.
 
-Gracias a este autobalanceo, un AVL garantiza O(log n) en búsqueda, inserción y
-eliminación, incluso con datos que llegan ya ordenados — el peor caso del ABB simple.
+> Convención usada: una hoja tiene altura `0` y un árbol vacío tiene altura `-1`.
 
-## Árbol Heap
+## Cómo reconocer los árboles principales
 
-Un heap es un árbol binario **completo** (todos los niveles llenos excepto quizás el
-último, que se llena de izquierda a derecha) que cumple la **propiedad de heap**:
+| Tipo | Cómo reconocerlo | Para qué sirve |
+|---|---|---|
+| Árbol general | Un nodo puede tener cualquier cantidad de hijos. | Jerarquías, carpetas, menús y organigramas. |
+| Árbol binario | Cada nodo tiene como máximo dos hijos: izquierdo y derecho. | Base de ABB, AVL, heaps y árboles de expresión. |
+| ABB o BST | Todo valor del subárbol izquierdo es menor y todo valor del derecho es mayor. | Búsqueda, inserción y recorrido ordenado. |
+| AVL | Es un ABB y el factor de equilibrio de cada nodo pertenece a `[-1, 1]`. | Mantener operaciones garantizadas en `O(log n)`. |
+| Heap | Es binario completo y cada padre domina a sus hijos según mínimo o máximo. | Colas de prioridad, planificación y HeapSort. |
+| B-Tree / B+ Tree | Cada nodo almacena varias claves y puede tener muchos hijos. | Índices de bases de datos y almacenamiento en disco. |
+| Trie | Cada arista representa un carácter y cada camino forma un prefijo o palabra. | Autocompletado, diccionarios y búsqueda por prefijo. |
 
-- **Max-heap**: cada nodo es mayor o igual que sus hijos → el máximo está en la raíz.
-- **Min-heap**: cada nodo es menor o igual que sus hijos → el mínimo está en la raíz.
+## Árbol binario de búsqueda (ABB)
 
-A diferencia de un ABB, un heap **no está totalmente ordenado** — solo garantiza el
-orden entre un nodo y sus hijos directos, no entre hermanos. Por eso es ineficiente para
-buscar un valor arbitrario, pero óptimo para acceder siempre al extremo (máximo o
-mínimo) en O(1).
+Un **árbol binario de búsqueda**, ABB o BST, es un árbol binario con una regla de orden que se aplica recursivamente:
 
-### Representación con arreglos
+```text
+valores del subárbol izquierdo < nodo < valores del subárbol derecho
+```
 
-Un heap se representa de forma compacta en un arreglo, sin punteros: para un nodo en
-la posición `i`, su hijo izquierdo está en `2i + 1`, el derecho en `2i + 2`, y su padre en
-`(i - 1) / 2` (división entera).
+El árbol inicial sí es un ABB. En cambio, el siguiente no lo es:
 
-### Operaciones
+```text
+       10
+      /  \
+     5    15
+         /
+        6   ← incorrecto: 6 está en el subárbol derecho de 10
+```
 
-- **Insertar** — se agrega al final del arreglo, y se aplica *heapify up* (intercambiar con
-  el padre mientras se viole la propiedad).
-- **Eliminar la raíz** — se reemplaza con el último elemento del arreglo, se elimina ese
-  último, y se aplica *heapify down* desde la raíz.
+Aunque `6 < 15`, también se encuentra dentro del subárbol derecho de `10`, donde todos los valores deberían ser mayores que `10`. Para reconocer un ABB no basta comparar cada nodo con sus hijos: debe verificarse el rango permitido para todo el subárbol.
 
-Ambas son O(log n); consultar la raíz es O(1).
+### ¿Para qué sirve un ABB?
 
-### Aplicaciones
+- Mantener un conjunto de valores ordenados.
+- Buscar, insertar y eliminar sin desplazar elementos de un arreglo.
+- Obtener los valores ordenados mediante un recorrido inorden.
+- Consultar mínimo, máximo, sucesor y predecesor.
+- Realizar consultas por rango cuando el árbol mantiene una altura adecuada.
 
-Colas de prioridad, HeapSort, el algoritmo de Dijkstra (ruta más corta) y compresión de
-Huffman.
+### Búsqueda dirigida: ejemplo paso a paso
+
+Para buscar `12` en el árbol inicial:
+
+1. Comparamos con `10`. Como `12 > 10`, avanzamos a la derecha.
+2. Comparamos con `15`. Como `12 < 15`, avanzamos a la izquierda.
+3. Encontramos `12`.
+
+Solo se visitaron tres nodos. Cada comparación descartó un subárbol completo.
+
+### Código Java: buscar en un ABB
+
+```java
+class Nodo {
+    int valor;
+    Nodo izquierdo, derecho;
+
+    Nodo(int valor) {
+        this.valor = valor;
+    }
+}
+
+boolean buscar(Nodo raiz, int objetivo) {
+    Nodo actual = raiz;
+
+    while (actual != null) {
+        if (objetivo == actual.valor) return true;
+
+        actual = objetivo < actual.valor
+                ? actual.izquierdo
+                : actual.derecho;
+    }
+    return false;
+}
+```
+
+La búsqueda cuesta `O(h)`, donde `h` es la altura del árbol:
+
+- ABB balanceado: `h ≈ log₂(n)`, por lo tanto `O(log n)`.
+- ABB degenerado: `h ≈ n`, por lo tanto `O(n)`.
+
+### Inserción
+
+La inserción sigue el mismo camino que una búsqueda. Cuando encuentra una referencia nula, coloca allí el nuevo nodo.
+
+```java
+Nodo insertar(Nodo nodo, int valor) {
+    if (nodo == null) return new Nodo(valor);
+
+    if (valor < nodo.valor) {
+        nodo.izquierdo = insertar(nodo.izquierdo, valor);
+    } else if (valor > nodo.valor) {
+        nodo.derecho = insertar(nodo.derecho, valor);
+    }
+
+    return nodo; // en este ejemplo se ignoran duplicados
+}
+```
+
+El orden de inserción importa. Insertar `10, 15, 20, 25` produce un árbol degenerado:
+
+```text
+10
+  \
+   15
+     \
+      20
+        \
+         25
+```
+
+### Eliminación
+
+Existen tres casos:
+
+| Caso | Situación | Acción |
+|---|---|---|
+| Hoja | El nodo no tiene hijos. | Eliminarlo directamente. |
+| Un hijo | Tiene solo hijo izquierdo o derecho. | Conectar el padre con ese hijo. |
+| Dos hijos | Tiene ambos hijos. | Reemplazarlo por el sucesor inorden o el predecesor inorden. |
+
+El **sucesor inorden** es el menor valor del subárbol derecho. El **predecesor inorden** es el mayor valor del subárbol izquierdo.
+
+## Recorridos de árboles
+
+Recorrer un árbol significa visitar todos sus nodos siguiendo un orden. Usaremos el mismo árbol para comparar resultados:
+
+```text
+          10
+        /    \
+       5      15
+      / \    / \
+     3   7  12  20
+```
+
+| Recorrido | Regla | Resultado | Uso típico |
+|---|---|---|---|
+| Preorden | Nodo, izquierdo, derecho | `10, 5, 3, 7, 15, 12, 20` | Procesar el padre antes de los hijos; copiar o serializar. |
+| Inorden | Izquierdo, nodo, derecho | `3, 5, 7, 10, 12, 15, 20` | Obtener los valores ordenados de un ABB. |
+| Postorden | Izquierdo, derecho, nodo | `3, 7, 5, 12, 20, 15, 10` | Procesar hijos antes del padre; eliminar o calcular desde las hojas. |
+| Por niveles | Nivel por nivel, de izquierda a derecha | `10, 5, 15, 3, 7, 12, 20` | Analizar niveles; trabajar con heaps; encontrar la ruta con menos aristas. |
+
+Preorden, inorden y postorden son recorridos en profundidad o **DFS**. El recorrido por niveles es un recorrido en amplitud o **BFS**.
+
+### Código Java: DFS
+
+```java
+void preorden(Nodo nodo) {
+    if (nodo == null) return;
+    System.out.print(nodo.valor + " ");
+    preorden(nodo.izquierdo);
+    preorden(nodo.derecho);
+}
+
+void inorden(Nodo nodo) {
+    if (nodo == null) return;
+    inorden(nodo.izquierdo);
+    System.out.print(nodo.valor + " ");
+    inorden(nodo.derecho);
+}
+
+void postorden(Nodo nodo) {
+    if (nodo == null) return;
+    postorden(nodo.izquierdo);
+    postorden(nodo.derecho);
+    System.out.print(nodo.valor + " ");
+}
+```
+
+### Código Java: recorrido por niveles
+
+```java
+import java.util.LinkedList;
+import java.util.Queue;
+
+void porNiveles(Nodo raiz) {
+    if (raiz == null) return;
+
+    Queue<Nodo> cola = new LinkedList<>();
+    cola.offer(raiz);
+
+    while (!cola.isEmpty()) {
+        Nodo actual = cola.poll();
+        System.out.print(actual.valor + " ");
+
+        if (actual.izquierdo != null) cola.offer(actual.izquierdo);
+        if (actual.derecho != null) cola.offer(actual.derecho);
+    }
+}
+```
+
+Un recorrido completo visita `n` nodos y cuesta `O(n)`. DFS usa `O(h)` memoria en la pila; BFS usa `O(w)`, donde `w` es el ancho máximo del árbol.
+
+## Árbol AVL y rotaciones
+
+### ¿Rotar es exclusivo de AVL?
+
+No. Una **rotación** es una reestructuración local de un ABB: reorganiza un nodo y uno de sus hijos mediante referencias, sin romper el orden del árbol. AVL es donde se aprende por primera vez, pero no es la única estructura que la usa:
+
+- **AVL** — rotaciones para restaurar el factor de equilibrio.
+- **Rojo-negro** — rotaciones combinadas con recoloreo para restaurar sus reglas de color.
+- **Splay Tree** — rotaciones para llevar un nodo accedido hasta la raíz (casos zig, zig-zig, zig-zag).
+- **Treap** — rotaciones para mantener la propiedad de heap sobre una prioridad aleatoria, sin dejar de ser un ABB.
+
+> El detalle de rojo-negro y Splay Tree está en [Árboles — Contenido avanzado](/teaching/data-structures/2p/arboles-avanzado).
+
+### ¿Por qué se rota?
+
+Se rota cuando la **forma** del árbol deja de convenir — creció demasiado en altura, o un nodo necesita subir — pero los **valores** siguen correctamente ordenados. La rotación resuelve ese problema sin reconstruir el árbol: solo reorganiza un nodo y su hijo mediante punteros, en `O(1)`.
+
+### Qué considerar antes de rotar
+
+- **Dirección** — se rota hacia el lado contrario de donde está el desbalance: si el problema está a la izquierda, se rota a la derecha, y viceversa.
+- **Simple o doble** — un desbalance "en línea recta" (LL o RR) se resuelve con una sola rotación; un "zigzag" (LR o RL) necesita dos.
+- **Se conserva el recorrido inorden** — ningún valor se pierde ni se reordena; solo cambia qué nodo queda arriba.
+- **Actualizar metadatos después de rotar** — la rotación en sí no lo hace automáticamente. En AVL hay que recalcular la altura de los nodos afectados; en rojo-negro, sus colores.
+- **Costo constante por rotación** — cada rotación es `O(1)`. Lo que varía es cuántas se necesitan: en AVL, como máximo una rotación (simple o doble) por inserción.
+
+Un árbol AVL es un ABB que controla su altura después de cada inserción o eliminación. Para cada nodo calcula:
+
+```text
+factor de equilibrio = altura(izquierdo) - altura(derecho)
+```
+
+Un nodo está equilibrado cuando su factor pertenece a `-1`, `0` o `1`. Si llega a `2` o `-2`, se aplica una rotación.
+
+### Cómo elegir la rotación
+
+| Caso | Dónde se insertó el valor | Solución |
+|---|---|---|
+| LL: izquierda–izquierda | Subárbol izquierdo del hijo izquierdo | Rotación simple a la derecha. |
+| RR: derecha–derecha | Subárbol derecho del hijo derecho | Rotación simple a la izquierda. |
+| LR: izquierda–derecha | Subárbol derecho del hijo izquierdo | Rotación izquierda en el hijo y derecha en el nodo. |
+| RL: derecha–izquierda | Subárbol izquierdo del hijo derecho | Rotación derecha en el hijo y izquierda en el nodo. |
+
+### Caso LL: rotación a la derecha
+
+Antes:
+
+```text
+        30
+       /
+      20
+     /
+    10
+```
+
+Después:
+
+```text
+       20
+      /  \
+     10   30
+```
+
+### Caso RR: rotación a la izquierda
+
+Antes:
+
+```text
+    10
+      \
+       20
+         \
+          30
+```
+
+Después:
+
+```text
+       20
+      /  \
+     10   30
+```
+
+### Casos dobles LR y RL
+
+Una rotación doble corrige un zigzag:
+
+```text
+LR                     RL
+    30                 10
+   /                     \
+  10                      30
+    \                    /
+     20                20
+```
+
+En ambos casos, el resultado es:
+
+```text
+       20
+      /  \
+     10   30
+```
+
+### Código Java: rotaciones básicas
+
+```java
+Nodo rotarDerecha(Nodo y) {
+    Nodo x = y.izquierdo;
+    Nodo temporal = x.derecho;
+
+    x.derecho = y;
+    y.izquierdo = temporal;
+
+    return x;
+}
+
+Nodo rotarIzquierda(Nodo x) {
+    Nodo y = x.derecho;
+    Nodo temporal = y.izquierdo;
+
+    y.izquierdo = x;
+    x.derecho = temporal;
+
+    return y;
+}
+```
+
+En una implementación AVL completa también se actualizan las alturas después de cambiar los enlaces. Las rotaciones modifican la forma del árbol, pero **conservan el recorrido inorden** y, por tanto, la propiedad del ABB.
+
+## Heap: prioridad antes que orden total
+
+Un heap es un árbol binario **completo**: todos los niveles están llenos, excepto quizá el último, que se ocupa de izquierda a derecha.
+
+- En un **min-heap**, cada padre es menor o igual que sus hijos. El mínimo está en la raíz.
+- En un **max-heap**, cada padre es mayor o igual que sus hijos. El máximo está en la raíz.
+
+```text
+Min-heap
+          2
+        /   \
+       5     8
+      / \   /
+     9  12 10
+```
+
+Un heap no es un ABB. No garantiza que todos los valores de la izquierda sean menores que los de la derecha; solo mantiene la relación de prioridad entre padres e hijos.
+
+### Usos
+
+- Colas de prioridad.
+- Planificación de procesos y trabajos.
+- Algoritmos de Dijkstra y Prim.
+- HeapSort.
+- Obtener repetidamente el mínimo o máximo.
+
+### Representación en arreglo
+
+Para un nodo almacenado en la posición `i`:
+
+```text
+hijo izquierdo = 2i + 1
+hijo derecho   = 2i + 2
+padre          = (i - 1) / 2
+```
+
+Consultar la raíz cuesta `O(1)`. Insertar o eliminar la raíz cuesta `O(log n)` por las operaciones de `heapify`.
+
+### Código Java: min-heap
+
+```java
+import java.util.PriorityQueue;
+
+PriorityQueue<Integer> prioridades = new PriorityQueue<>();
+
+prioridades.offer(8);
+prioridades.offer(3);
+prioridades.offer(10);
+prioridades.offer(1);
+
+System.out.println(prioridades.peek()); // 1
+System.out.println(prioridades.poll()); // extrae 1
+System.out.println(prioridades.peek()); // 3
+```
+
+## Otros árboles importantes
+
+| Estructura | Cómo reconocerla | Uso recomendado | Estrategia de búsqueda o recorrido |
+|---|---|---|---|
+| Rojo-negro | ABB con nodos rojos o negros y reglas de color. | Mapas y conjuntos ordenados con muchas actualizaciones. | Búsqueda dirigida; reajuste mediante recoloreo y rotaciones. |
+| B-Tree | Nodo con varias claves y varios hijos; todas las hojas a la misma profundidad. | Índices almacenados en páginas de disco. | Buscar dentro del nodo y elegir el intervalo hijo. |
+| B+ Tree | Los datos finales están en hojas enlazadas; los nodos internos guían. | Bases de datos y consultas por rango. | Llegar a la primera hoja y avanzar por los enlaces. |
+| Trie | Cada nivel representa un carácter. | Prefijos, autocompletado y diccionarios. | Seguir un carácter por nivel: `O(L)` para una cadena de longitud `L`. |
+| Árbol de expresión | Hojas con operandos y nodos internos con operadores. | Evaluar y transformar expresiones. | Postorden para evaluar; preorden/inorden para otras notaciones. |
+| Segment Tree | Cada nodo resume un intervalo. | Sumas, mínimos o máximos en rangos dinámicos. | Recorrido con poda de intervalos. |
+| Fenwick Tree | Arreglo que codifica acumulados mediante bits. | Sumas de prefijo con actualizaciones. | Saltos de índice usando `lowbit(i)`. |
+| Quadtree / Octree | Divide el espacio en 4 regiones 2D u 8 regiones 3D. | Mapas, imágenes, colisiones y motores 3D. | Poda de regiones que no intersectan la consulta. |
+| K-D Tree | Alterna dimensiones para separar puntos. | Vecino más cercano y búsquedas espaciales. | Visitar primero el lado prometedor y podar por distancia. |
+
+### Código Java: búsqueda de prefijo en un Trie
+
+```java
+boolean contienePrefijo(NodoTrie raiz, String prefijo) {
+    NodoTrie actual = raiz;
+
+    for (char letra : prefijo.toCharArray()) {
+        actual = actual.hijos.get(letra);
+        if (actual == null) return false;
+    }
+    return true;
+}
+```
+
+La estructura `NodoTrie` mantiene un mapa de carácter a hijo. No compara palabras completas: sigue una arista por cada carácter del prefijo.
+
+## ¿Qué árbol debería elegir?
+
+| Necesidad principal | Estructura apropiada |
+|---|---|
+| Representar una jerarquía con cantidad variable de hijos | Árbol general |
+| Mantener valores ordenados con una implementación sencilla | ABB |
+| Garantizar búsquedas ordenadas en `O(log n)` | AVL |
+| Mantener un mapa o conjunto ordenado con muchas actualizaciones | Rojo-negro |
+| Obtener repetidamente el mínimo o máximo | Heap |
+| Construir un índice para almacenamiento secundario | B-Tree o B+ Tree |
+| Resolver prefijos y autocompletado | Trie |
+| Consultar y actualizar rangos | Segment Tree o Fenwick Tree |
+| Buscar puntos o regiones espaciales | Quadtree, Octree o K-D Tree |
+
+## Errores frecuentes
+
+- **"Todo árbol binario es un ABB."** Falso: el ABB añade una regla de orden.
+- **"Un ABB siempre busca en `O(log n)`."** Falso: depende de la altura y puede degenerarse.
+- **"En un heap los valores quedan totalmente ordenados."** Falso: solo hay orden entre padre e hijos.
+- **"Inorden siempre produce datos ordenados."** Solo ocurre cuando el árbol es un ABB.
+- **"Completo y perfecto significan lo mismo."** Un árbol perfecto llena todos los niveles; uno completo puede tener incompleto el último nivel.
+- **"BFS y DFS son algoritmos de búsqueda exclusiva."** También son estrategias generales de recorrido.
+
+## Comprueba lo aprendido
+
+Construye un ABB insertando, en este orden:
+
+```text
+40, 20, 60, 10, 30, 50, 70, 25, 35
+```
+
+Luego responde:
+
+1. ¿Cuál es la raíz y cuáles son las hojas?
+2. ¿Qué camino sigue la búsqueda de `25`?
+3. Escribe preorden, inorden, postorden y recorrido por niveles.
+4. ¿Qué ocurre si después se insertan `5`, `2` y `1`?
+5. ¿Qué ventaja tendría usar un AVL?
+
+## ¿Quieres profundizar?
+
+Esta página cubre lo esencial. La página de [Árboles — Contenido avanzado](/teaching/data-structures/2p/arboles-avanzado) desarrolla en profundidad la terminología completa, la clasificación por forma, el árbol rojo-negro, el Splay Tree, B-Tree/B+ Tree, Tries y árboles de sufijos, árboles de expresión/AST/decisión, Segment Tree, Fenwick Tree, y árboles espaciales (Quadtree, Octree, K-D Tree), además de actividades y preguntas de comprobación adicionales.
+
+## Resumen
+
+- Un árbol modela relaciones jerárquicas mediante nodos y subárboles.
+- Un árbol binario limita cada nodo a dos hijos; un ABB añade orden.
+- Buscar, insertar y eliminar en un ABB cuesta `O(h)`.
+- Preorden, inorden y postorden son DFS; el recorrido por niveles es BFS.
+- Un AVL usa rotaciones para conservar altura logarítmica.
+- Un heap prioriza el mínimo o máximo, pero no mantiene orden total.
+- La estructura correcta depende de la operación dominante: orden, prioridad, rango, prefijo, almacenamiento o espacio.

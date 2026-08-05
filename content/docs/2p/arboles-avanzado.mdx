@@ -1,0 +1,878 @@
+---
+title: "Árboles — Contenido avanzado"
+description: "Terminología completa, clasificación por forma, ABB y AVL en profundidad, rojo-negro, Splay Tree, B-Tree/B+ Tree, Tries, árboles de expresión, Segment/Fenwick Tree y árboles espaciales."
+sidebar:
+  order: 2
+parcial: 2
+topic: arboles-avanzado
+---
+
+Este es el complemento avanzado del tópico [Árboles](/teaching/data-structures/2p/arboles). Cubre en profundidad la terminología, las variantes especializadas y las estructuras que la página principal solo menciona de paso. No repite las explicaciones de ABB básico, recorridos ni rotaciones AVL ya desarrolladas allí.
+
+## Terminología fundamental
+
+Comprender la terminología permite describir cualquier árbol con precisión.
+
+| Término | Definición | Ejemplo en el árbol de referencia |
+|---|---|---|
+| Nodo | Elemento que almacena un valor y referencias o enlaces. | `10`, `5`, `15`, `3`, `7`, `12`, `20`. |
+| Raíz | Primer nodo del árbol; no tiene padre. | `10`. |
+| Padre | Nodo con uno o más hijos directos. | `5` es padre de `3` y `7`. |
+| Hijo | Nodo ubicado directamente debajo de otro. | `12` es hijo de `15`. |
+| Hermanos | Nodos que comparten el mismo padre. | `3` y `7`. |
+| Hoja | Nodo que no tiene hijos. | `3`, `7`, `12`, `20`. |
+| Nodo interno | Nodo que tiene al menos un hijo. | `10`, `5`, `15`. |
+| Arista | Conexión directa entre dos nodos. | `10–5`. |
+| Camino | Secuencia de nodos conectados por aristas. | `10 → 5 → 7`. |
+| Ancestro | Nodo anterior en el camino desde la raíz. | `10` y `5` son ancestros de `7`. |
+| Descendiente | Nodo contenido dentro del subárbol de otro. | `3` y `7` son descendientes de `5`. |
+| Subárbol | Nodo considerado como raíz junto con todos sus descendientes. | El subárbol cuya raíz es `5`. |
+| Bosque | Conjunto de árboles separados. | Puede resultar al eliminar la raíz de un árbol. |
+
+### Grado, nivel, profundidad y altura
+
+- **Grado de un nodo:** cantidad de hijos directos.
+- **Grado del árbol:** mayor grado encontrado entre todos sus nodos.
+- **Nivel:** posición respecto de la raíz. En esta guía la raíz está en el nivel `0`.
+- **Profundidad:** cantidad de aristas desde la raíz hasta el nodo.
+- **Altura de un nodo:** cantidad de aristas del camino más largo desde ese nodo hasta una hoja.
+- **Altura del árbol:** altura de la raíz; también equivale a la profundidad máxima.
+
+```text
+          10             nivel 0, profundidad 0
+        /    \
+       5      15         nivel 1, profundidad 1
+      / \    / \
+     3   7  12  20      nivel 2, profundidad 2
+```
+
+En este árbol:
+
+- `grado(10) = 2`
+- `grado(5) = 2`
+- `grado(3) = 0`
+- `altura(5) = 1`
+- `altura(árbol) = 2`
+
+> La profundidad se mide desde la raíz hacia el nodo. La altura se mide desde el nodo hacia su hoja más lejana.
+
+### Relación con los grafos
+
+Un árbol puede verse como un grafo no dirigido que cumple dos condiciones: es conexo y no contiene ciclos. De estas condiciones se derivan propiedades importantes:
+
+- Entre cualquier par de nodos existe un único camino simple.
+- Un árbol con `n` nodos tiene exactamente `n − 1` aristas.
+- Agregar una arista entre dos nodos ya conectados forma un ciclo.
+- Eliminar una arista desconecta el árbol y produce un bosque.
+
+## Árbol general, n-ario y binario
+
+### Árbol general
+
+En un árbol general cada nodo puede tener cualquier cantidad de hijos. Normalmente cada nodo guarda una colección de referencias.
+
+```text
+           A
+        /  |  \
+       B   C   D
+     / | \     |
+    E  F  G    H
+```
+
+Se utiliza en sistemas de archivos, DOM de HTML/XML, menús, categorías y organigramas. Sin un índice o regla adicional, buscar un valor puede requerir visitar todos los nodos: `O(n)`.
+
+```java
+class NodoGeneral<T> {
+    T valor;
+    List<NodoGeneral<T>> hijos = new ArrayList<>();
+
+    NodoGeneral(T valor) {
+        this.valor = valor;
+    }
+
+    void agregarHijo(NodoGeneral<T> hijo) {
+        hijos.add(hijo);
+    }
+}
+```
+
+### Árbol n-ario
+
+Un árbol n-ario limita cada nodo a un máximo de `n` hijos. La letra `n` representa el límite de ramificación, no el número total de nodos.
+
+Se usa en árboles de juego con cantidad acotada de movimientos, taxonomías, índices jerárquicos y particiones por bloques. DFS es útil para enumerar caminos; BFS permite analizar niveles o encontrar el nodo más cercano a la raíz.
+
+### Árbol binario
+
+Un árbol binario permite como máximo dos hijos por nodo: izquierdo y derecho. Las posiciones son diferentes; un único hijo izquierdo no representa el mismo árbol que un único hijo derecho.
+
+Un árbol binario no está necesariamente ordenado. Si no existe una propiedad de orden, buscar un valor arbitrario cuesta `O(n)`.
+
+Es la forma base utilizada por ABB, AVL, heaps, árboles de expresión, árboles de decisión y codificación de Huffman.
+
+## Clasificación de árboles binarios según su forma
+
+La forma y la organización de los valores son propiedades distintas. Un árbol puede ser completo sin ser ABB, balanceado sin ser perfecto o estricto sin estar ordenado.
+
+### Árbol estricto, propio o lleno
+
+Cada nodo tiene exactamente cero o dos hijos. Ningún nodo interno tiene un solo hijo.
+
+```text
+       A
+      / \
+     B   C
+        / \
+       D   E
+```
+
+Cómo reconocerlo: inspeccionar cada nodo y comprobar que su cantidad de hijos sea `0` o `2`. Validarlo cuesta `O(n)`. Si existen `i` nodos internos, hay `i + 1` hojas.
+
+Usos: árboles de expresión binaria y decisiones con dos resultados.
+
+### Árbol perfecto
+
+Todos los nodos internos tienen dos hijos y todas las hojas se encuentran en el mismo nivel.
+
+```text
+          A
+        /   \
+       B     C
+      / \   / \
+     D   E F   G
+```
+
+Para altura `h`, medida en aristas:
+
+- Nodos del nivel `i`: `2^i`.
+- Total de nodos: `2^(h+1) − 1`.
+- Cantidad de hojas: `2^h`.
+- Su altura pertenece a `Θ(log n)`.
+
+Todo árbol perfecto es completo y estricto. No todo árbol completo o estricto es perfecto.
+
+### Árbol completo
+
+Todos los niveles anteriores al último están llenos. El último se ocupa de izquierda a derecha, sin espacios intermedios.
+
+```text
+          A
+        /   \
+       B     C
+      / \   /
+     D   E F
+```
+
+Cómo reconocerlo con BFS: después de encontrar el primer hijo ausente, no debe aparecer ningún hijo posterior. Esta forma permite almacenar el árbol compactamente en un arreglo y es la utilizada por los heaps.
+
+### Árbol balanceado
+
+Evita ramas desproporcionadamente largas. La definición exacta depende de la estructura:
+
+- AVL limita localmente la diferencia de alturas.
+- Rojo-negro usa reglas de color.
+- B-Tree mantiene todas las hojas a la misma profundidad.
+
+Si además es un árbol de búsqueda, el objetivo es conservar una altura `O(log n)`.
+
+### Árbol degenerado
+
+Cada nodo tiene un único hijo. Pierde la ramificación y se comporta como una lista enlazada.
+
+```text
+10
+  \
+   15
+     \
+      20
+        \
+         25
+```
+
+Con `n` nodos puede alcanzar altura `n − 1`. Buscar, insertar o eliminar en un ABB degenerado cuesta `O(n)`.
+
+### Árbol inclinado
+
+- **Inclinado a la izquierda:** todo hijo existente ocupa la posición izquierda.
+- **Inclinado a la derecha:** todo hijo existente ocupa la posición derecha.
+
+Insertar valores ordenados en un ABB sin balanceo suele producir un árbol inclinado.
+
+### Resumen de formas
+
+| Tipo | Condición principal | ¿Todos los niveles están llenos? |
+|---|---|---|
+| Binario | Máximo dos hijos por nodo. | No. |
+| Estricto | Cada nodo tiene `0` o `2` hijos. | No necesariamente. |
+| Perfecto | Nodos internos con dos hijos y hojas al mismo nivel. | Sí. |
+| Completo | Último nivel ocupado desde la izquierda. | Solo los anteriores al último. |
+| Balanceado | Alturas o caminos controlados. | No necesariamente. |
+| Degenerado | Un hijo por nodo. | No. |
+
+## Recursividad, altura y conteos
+
+Cada hijo es la raíz de otro árbol. Por ello, muchos algoritmos siguen este patrón:
+
+1. Resolver un caso base, normalmente el árbol vacío.
+2. Resolver recursivamente los subárboles.
+3. Combinar sus resultados en el nodo actual.
+
+### Calcular la altura
+
+```java
+int altura(Nodo nodo) {
+    if (nodo == null) return -1;
+
+    int izquierda = altura(nodo.izquierdo);
+    int derecha = altura(nodo.derecho);
+
+    return 1 + Math.max(izquierda, derecha);
+}
+```
+
+### Contar nodos
+
+```java
+int contarNodos(Nodo nodo) {
+    if (nodo == null) return 0;
+
+    return 1
+            + contarNodos(nodo.izquierdo)
+            + contarNodos(nodo.derecho);
+}
+```
+
+### Contar hojas
+
+```java
+int contarHojas(Nodo nodo) {
+    if (nodo == null) return 0;
+
+    if (nodo.izquierdo == null && nodo.derecho == null) {
+        return 1;
+    }
+
+    return contarHojas(nodo.izquierdo)
+            + contarHojas(nodo.derecho);
+}
+```
+
+Los tres algoritmos visitan cada nodo una vez y cuestan `O(n)`. La pila recursiva usa `O(h)` memoria: `O(log n)` en un árbol balanceado y `O(n)` en uno degenerado.
+
+### Propiedades matemáticas útiles
+
+| Propiedad | Fórmula |
+|---|---|
+| Máximo de nodos en el nivel `i` | `2^i` |
+| Máximo de nodos con altura `h` | `2^(h+1) − 1` |
+| Altura mínima aproximada para `n` nodos | `⌈log₂(n + 1)⌉ − 1` |
+| Altura máxima para `n` nodos | `n − 1` |
+
+## Operaciones avanzadas del ABB
+
+### Política para valores duplicados
+
+Un ABB debe definir qué ocurre con valores repetidos. Las políticas habituales son:
+
+- Rechazar duplicados.
+- Enviarlos siempre al mismo lado.
+- Guardar un contador de repeticiones dentro del nodo.
+
+No existe una regla universal, pero la implementación debe ser consistente. Los ejemplos básicos de la página principal rechazan duplicados.
+
+### Mínimo y máximo
+
+- El mínimo se encuentra siguiendo hijos izquierdos.
+- El máximo se encuentra siguiendo hijos derechos.
+
+```java
+int minimo(Nodo nodo) {
+    if (nodo == null) throw new IllegalArgumentException("Árbol vacío");
+
+    while (nodo.izquierdo != null) {
+        nodo = nodo.izquierdo;
+    }
+    return nodo.valor;
+}
+```
+
+### Eliminación completa
+
+Los tres casos son: hoja, un hijo y dos hijos. Cuando existen dos hijos, este ejemplo utiliza el sucesor inorden: el menor valor del subárbol derecho.
+
+```java
+Nodo eliminar(Nodo actual, int valor) {
+    if (actual == null) return null;
+
+    if (valor < actual.valor) {
+        actual.izquierdo = eliminar(actual.izquierdo, valor);
+    } else if (valor > actual.valor) {
+        actual.derecho = eliminar(actual.derecho, valor);
+    } else {
+        if (actual.izquierdo == null) return actual.derecho;
+        if (actual.derecho == null) return actual.izquierdo;
+
+        int sucesor = minimo(actual.derecho);
+        actual.valor = sucesor;
+        actual.derecho = eliminar(actual.derecho, sucesor);
+    }
+
+    return actual;
+}
+```
+
+Todas las operaciones dirigidas cuestan `O(h)`:
+
+| Operación | ABB balanceado | ABB degenerado |
+|---|---|---|
+| Búsqueda | `O(log n)` | `O(n)` |
+| Inserción | `O(log n)` | `O(n)` |
+| Eliminación | `O(log n)` | `O(n)` |
+| Recorrido completo | `O(n)` | `O(n)` |
+
+## Complemento de AVL: actualización de alturas y balanceo
+
+Las rotaciones básicas modifican enlaces. Una implementación AVL completa también debe actualizar las alturas y decidir el caso de desbalance.
+
+```java
+class NodoAVL {
+    int valor;
+    int altura = 0;
+    NodoAVL izquierdo, derecho;
+
+    NodoAVL(int valor) {
+        this.valor = valor;
+    }
+}
+
+int altura(NodoAVL nodo) {
+    return nodo == null ? -1 : nodo.altura;
+}
+
+void actualizarAltura(NodoAVL nodo) {
+    nodo.altura = 1 + Math.max(
+            altura(nodo.izquierdo),
+            altura(nodo.derecho)
+    );
+}
+
+int factorEquilibrio(NodoAVL nodo) {
+    return altura(nodo.izquierdo) - altura(nodo.derecho);
+}
+```
+
+Después de insertar recursivamente:
+
+1. Se actualiza la altura del nodo.
+2. Se calcula su factor de equilibrio.
+3. Se identifica LL, RR, LR o RL.
+4. Se aplica la rotación correspondiente.
+
+Cada rotación es local y cuesta `O(1)`. La búsqueda, inserción y eliminación permanecen en `O(log n)`.
+
+## Árbol rojo-negro
+
+Un árbol rojo-negro es un ABB autoequilibrado que almacena un color en cada nodo. Su equilibrio es menos estricto que el de AVL, pero limita la altura a un valor logarítmico.
+
+Reglas fundamentales:
+
+1. Cada nodo es rojo o negro.
+2. La raíz es negra.
+3. Las referencias nulas se consideran negras.
+4. Un nodo rojo no puede tener un hijo rojo.
+5. Todos los caminos desde un nodo hasta hojas nulas contienen la misma cantidad de nodos negros.
+
+Cuando una inserción o eliminación rompe estas reglas, el árbol se corrige mediante recoloreo y rotaciones.
+
+| Característica | AVL | Rojo-negro |
+|---|---|---|
+| Balance | Más estricto. | Menos estricto. |
+| Búsqueda | Puede ser ligeramente más rápida. | Muy eficiente. |
+| Inserción/eliminación | Puede requerir más rotaciones. | Suele requerir menos reorganizaciones. |
+| Uso típico | Escenarios dominados por búsquedas. | Colecciones con muchas modificaciones. |
+| Java | No es la base directa de las colecciones estándar. | `TreeMap` y `TreeSet` usan esta familia. |
+
+Búsqueda, inserción y eliminación cuestan `O(log n)`.
+
+## Splay Tree
+
+Un Splay Tree es un ABB autoajustable. Después de buscar, insertar o acceder a un nodo, aplica rotaciones para llevarlo a la raíz. No almacena alturas, factores de equilibrio ni colores.
+
+Casos de autoajuste:
+
+- **Zig:** el nodo tiene como padre la raíz; se aplica una rotación.
+- **Zig-zig:** nodo y padre están alineados; se aplican dos rotaciones en la misma dirección.
+- **Zig-zag:** nodo y padre forman un giro; se aplican dos rotaciones en direcciones opuestas.
+
+Una operación aislada puede costar `O(n)`, pero el costo amortizado es `O(log n)`. Resulta útil cuando existe localidad temporal: los elementos consultados recientemente tienden a volver a consultarse.
+
+Usos: cachés, tablas autoajustables y estructuras donde unas pocas claves concentran la mayoría de accesos.
+
+## Heap en mayor profundidad
+
+El heap combina dos propiedades:
+
+1. **Forma completa:** permite representarlo en un arreglo sin huecos.
+2. **Propiedad de prioridad:** cada padre domina a sus hijos según mínimo o máximo.
+
+- En un **min-heap**, la raíz contiene el mínimo y cada padre es menor o igual que sus hijos.
+- En un **max-heap**, la raíz contiene el máximo y cada padre es mayor o igual que sus hijos.
+
+Complejidades:
+
+| Operación | Complejidad |
+|---|---|
+| Consultar mínimo o máximo | `O(1)` |
+| Insertar | `O(log n)` |
+| Extraer mínimo o máximo | `O(log n)` |
+| Buscar un valor arbitrario | `O(n)` |
+| Construir el heap | `O(n)` |
+
+### Heapify down en un min-heap
+
+Al eliminar la raíz se mueve el último elemento a la posición `0`. Luego se intercambia con el menor de sus hijos hasta restaurar la propiedad.
+
+```java
+void heapifyDown(int[] heap, int tamaño, int i) {
+    while (true) {
+        int izquierdo = 2 * i + 1;
+        int derecho = 2 * i + 2;
+        int menor = i;
+
+        if (izquierdo < tamaño && heap[izquierdo] < heap[menor]) {
+            menor = izquierdo;
+        }
+        if (derecho < tamaño && heap[derecho] < heap[menor]) {
+            menor = derecho;
+        }
+        if (menor == i) return;
+
+        int temporal = heap[i];
+        heap[i] = heap[menor];
+        heap[menor] = temporal;
+        i = menor;
+    }
+}
+```
+
+> Construir un heap mediante heapify desde los últimos nodos internos cuesta `O(n)`, no `O(n log n)`.
+
+## B-Tree y B+ Tree
+
+Los árboles multiway reducen la altura almacenando varias claves por nodo. Cada nodo suele corresponder a una página de disco o bloque de almacenamiento.
+
+### B-Tree
+
+Propiedades principales:
+
+- Cada nodo contiene varias claves ordenadas.
+- Las claves separan rangos de valores entre sus hijos.
+- Todas las hojas se encuentran a la misma profundidad.
+- Los nodos pueden dividirse o fusionarse durante las actualizaciones.
+
+```text
+             [20 | 40]
+           /     |      \
+      [5 | 10] [25 | 30] [50 | 60]
+```
+
+Para buscar `30`:
+
+1. Se compara dentro del nodo raíz.
+2. Como `20 < 30 < 40`, se elige el hijo central.
+3. Se busca dentro de `[25 | 30]`.
+
+Para un árbol de orden `m`, la altura es `O(log_m n)`. La ventaja práctica es reducir accesos a páginas de almacenamiento.
+
+> La letra B no posee una expansión oficial única. Es preferible usar simplemente el nombre B-Tree.
+
+### B+ Tree
+
+En un B+ Tree los nodos internos funcionan principalmente como índice. Los datos finales están en hojas situadas al mismo nivel y normalmente enlazadas entre sí.
+
+```text
+             [20 | 40]
+           /     |      \
+      [5,10] ↔ [20,25,30] ↔ [40,50,60]
+```
+
+Una consulta por rango primero localiza la hoja inicial mediante búsqueda dirigida y luego avanza por los enlaces entre hojas.
+
+- Buscar una clave: `O(log_m n)`.
+- Reportar `k` elementos de un rango: `O(log_m n + k)`.
+
+| Característica | B-Tree | B+ Tree |
+|---|---|---|
+| Ubicación de datos | Nodos internos y hojas. | Principalmente hojas. |
+| Hojas enlazadas | No necesariamente. | Normalmente sí. |
+| Consulta por rango | Eficiente. | Especialmente eficiente. |
+| Uso típico | Almacenamiento e índices. | Índices de bases de datos. |
+
+## Árboles para cadenas
+
+### Trie o árbol de prefijos
+
+Las aristas representan caracteres. Una marca de fin distingue una palabra completa de un prefijo.
+
+```text
+raíz
+ ├─ c ─ a ─ s ─ a*
+ │         └─ o*
+ └─ p ─ a ─ n*
+```
+
+El asterisco marca el final de una palabra. Buscar o insertar una cadena de longitud `m` cuesta `O(m)`, independientemente de la cantidad total de palabras.
+
+```java
+class NodoTrie {
+    Map<Character, NodoTrie> hijos = new HashMap<>();
+    boolean finDePalabra;
+}
+
+void insertar(NodoTrie raiz, String palabra) {
+    NodoTrie actual = raiz;
+
+    for (char letra : palabra.toCharArray()) {
+        actual = actual.hijos.computeIfAbsent(
+                letra,
+                clave -> new NodoTrie()
+        );
+    }
+    actual.finDePalabra = true;
+}
+
+boolean contienePalabra(NodoTrie raiz, String palabra) {
+    NodoTrie actual = raiz;
+
+    for (char letra : palabra.toCharArray()) {
+        actual = actual.hijos.get(letra);
+        if (actual == null) return false;
+    }
+    return actual.finDePalabra;
+}
+```
+
+DFS desde el nodo de un prefijo permite enumerar todas sus palabras. Si las aristas se recorren ordenadas, el resultado puede producirse en orden lexicográfico.
+
+### Radix Tree o Patricia Trie
+
+Comprime cadenas de nodos con un único hijo en una sola arista etiquetada con una subcadena.
+
+```text
+Trie:   c → o → m → p → u → t → a → r
+Radix:  "computar"
+```
+
+Reduce nodos y saltos sin perder la capacidad de buscar por prefijo. Se usa en enrutamiento IP, diccionarios compactos e índices de cadenas. Buscar una clave de longitud `m` suele costar `O(m)`.
+
+### Árbol de sufijos
+
+Representa todos los sufijos de un texto. Cada camino desde la raíz consume una subcadena y permite descartar rápidamente ramas incompatibles.
+
+Usos:
+
+- Buscar subcadenas.
+- Encontrar repeticiones.
+- Analizar ADN y otras secuencias.
+- Encontrar coincidencias y patrones.
+
+Con una construcción avanzada requiere `O(m)` tiempo y espacio para un texto de longitud `m`. Buscar un patrón `p` cuesta `O(|p| + z)`, donde `z` es la cantidad de coincidencias reportadas.
+
+## Árboles de expresiones, sintaxis y decisiones
+
+### Árbol de expresiones
+
+Los nodos internos son operadores y las hojas son operandos.
+
+```text
+Expresión: (3 + 5) * 2
+
+          *
+        /   \
+       +     2
+      / \
+     3   5
+```
+
+- Postorden: `3 5 + 2 *`, útil para evaluar.
+- Preorden: `* + 3 5 2`, notación prefija.
+- Inorden: `(3 + 5) * 2`, notación infija con paréntesis.
+
+Evaluar o recorrer el árbol cuesta `O(n)`.
+
+### Árbol sintáctico abstracto (AST)
+
+Un AST representa la estructura significativa de un programa y elimina detalles sintácticos que no aportan semántica. Sus nodos pueden representar asignaciones, llamadas, literales, operadores, bloques y condiciones.
+
+Usos:
+
+- Compiladores e intérpretes.
+- Análisis estático.
+- Formateadores.
+- Refactorización automática.
+- Transformaciones de código.
+
+Se recorre normalmente con DFS y el patrón Visitor. Preorden resulta útil para entrar en una construcción antes de sus componentes; postorden permite transformar primero los hijos.
+
+### Árbol de decisión
+
+Cada nodo interno contiene una condición y cada hoja representa una decisión o predicción.
+
+```text
+             ¿edad >= 18?
+              /         \
+            no           sí
+        "menor"     ¿tiene licencia?
+                       /       \
+                     no         sí
+                 "no conduce" "conduce"
+```
+
+Una inferencia sigue una única ruta desde la raíz hasta una hoja y cuesta `O(h)`. Se usa en clasificación, diagnóstico, crédito, reglas de negocio y sistemas expertos.
+
+## Árboles para consultas de rango
+
+### Segment Tree
+
+Cada nodo representa un segmento contiguo de un arreglo y almacena un resumen: suma, mínimo, máximo u otra operación asociativa.
+
+```text
+Arreglo: [2, 1, 5, 3]
+
+             [0,3] = 11
+             /        \
+        [0,1] = 3   [2,3] = 8
+         /   \       /   \
+       2      1     5     3
+```
+
+Durante una consulta:
+
+- Un nodo totalmente fuera del rango se descarta.
+- Un nodo totalmente dentro se usa sin descender.
+- Un nodo parcialmente intersectado consulta ambos hijos.
+
+Complejidades:
+
+- Construcción: `O(n)`.
+- Consulta de rango: `O(log n)` en operaciones habituales.
+- Actualización puntual: `O(log n)`.
+- Espacio: `O(n)`.
+
+### Fenwick Tree o Binary Indexed Tree
+
+Es una estructura implícita en un arreglo. Cada posición resume un bloque cuyo tamaño depende de su bit menos significativo: `lowbit(i) = i & -i`.
+
+```java
+class Fenwick {
+    private final int[] arbol;
+
+    Fenwick(int tamaño) {
+        arbol = new int[tamaño + 1];
+    }
+
+    void actualizar(int i, int delta) {
+        while (i < arbol.length) {
+            arbol[i] += delta;
+            i += i & -i;
+        }
+    }
+
+    int prefijo(int i) {
+        int suma = 0;
+        while (i > 0) {
+            suma += arbol[i];
+            i -= i & -i;
+        }
+        return suma;
+    }
+
+    int rango(int izquierda, int derecha) {
+        return prefijo(derecha) - prefijo(izquierda - 1);
+    }
+}
+```
+
+Actualización y consulta cuestan `O(log n)` y el espacio es `O(n)`. Frente a Segment Tree usa menos memoria y código, pero ofrece menos flexibilidad.
+
+## Árboles espaciales
+
+### Quadtree
+
+Divide recursivamente una región bidimensional en cuatro cuadrantes: noroeste, noreste, suroeste y sureste.
+
+```text
+región
+├─ NO
+├─ NE
+├─ SO
+└─ SE
+```
+
+Usos: mapas, imágenes, GIS, compresión y detección de colisiones 2D. Las consultas podan cuadrantes que no intersectan la región buscada.
+
+### Octree
+
+Extiende la idea del Quadtree a tres dimensiones y divide un volumen en ocho octantes.
+
+Usos: motores 3D, nubes de puntos, visibilidad, robótica, simulación y colisiones. La poda evita revisar volúmenes alejados o sin intersección.
+
+### K-D Tree
+
+Organiza puntos de `k` dimensiones mediante cortes binarios. Cada nivel selecciona una dimensión y separa los puntos con un hiperplano.
+
+```text
+              x = 5
+             /     \
+          y = 3   y = 8
+```
+
+Usos: vecino más cercano, búsquedas por rango, visión, gráficos, geolocalización y aprendizaje automático.
+
+La búsqueda visita primero el lado más prometedor. El lado opuesto se explora únicamente si su región todavía puede contener una mejor respuesta. Una construcción balanceada típica cuesta `O(n log n)`; las consultas pueden ser sublineales, aunque el peor caso es `O(n)`.
+
+## Representación enlazada frente a arreglo
+
+| Aspecto | Representación enlazada | Representación en arreglo |
+|---|---|---|
+| Estructura | Cada nodo contiene referencias. | Las posiciones codifican las relaciones. |
+| Flexibilidad | Alta para árboles irregulares. | Ideal para árboles completos. |
+| Memoria | Consume espacio por referencias. | Puede desperdiciar espacio si existen huecos. |
+| Localidad | Los nodos pueden quedar dispersos. | Buena localidad de caché. |
+| Ejemplos | ABB, AVL, Trie. | Heap. |
+
+Un heap completo aprovecha muy bien un arreglo. Un ABB irregular se representa normalmente con nodos enlazados para no reservar posiciones vacías.
+
+## Guía ampliada de selección
+
+| Problema dominante | Estructura recomendada | Motivo |
+|---|---|---|
+| Jerarquía con cantidad variable de hijos | Árbol general | Ramificación flexible. |
+| Jerarquía con límite fijo de hijos | Árbol n-ario | Controla el grado máximo. |
+| Datos ordenados con implementación sencilla | ABB | Búsqueda dirigida e inorden. |
+| Muchas búsquedas con latencia predecible | AVL | Balance estricto. |
+| Muchas inserciones y eliminaciones ordenadas | Rojo-negro | Balance menos estricto y pocas reorganizaciones. |
+| Localidad temporal de accesos | Splay Tree | Lleva los elementos recientes a la raíz. |
+| Extraer repetidamente mínimo o máximo | Heap | Extremo en la raíz. |
+| Índice almacenado por páginas | B-Tree | Gran ramificación y poca altura. |
+| Índice con consultas por rango | B+ Tree | Hojas ordenadas y enlazadas. |
+| Prefijos y autocompletado | Trie | Una arista por carácter. |
+| Prefijos compactos | Radix/Patricia | Comprime cadenas de un solo hijo. |
+| Búsqueda de subcadenas | Árbol de sufijos | Indexa todos los sufijos. |
+| Evaluación de fórmulas | Árbol de expresiones | Jerarquía natural de operadores. |
+| Análisis de código | AST | Representa construcciones semánticas. |
+| Clasificación y reglas | Árbol de decisión | Una condición por nivel. |
+| Rangos con operación flexible | Segment Tree | Agregados jerárquicos por intervalo. |
+| Sumas de prefijo compactas | Fenwick Tree | Saltos codificados por bits. |
+| Regiones 2D | Quadtree | Cuatro subdivisiones espaciales. |
+| Volúmenes 3D | Octree | Ocho subdivisiones espaciales. |
+| Vecino más cercano en varias dimensiones | K-D Tree | Cortes por dimensión y poda. |
+
+## Recorridos y estrategias más allá de los cuatro básicos
+
+No existe un recorrido obligatorio para cada tipo de árbol. Debe elegirse según la operación.
+
+| Estrategia | Qué visita | Aplicaciones |
+|---|---|---|
+| DFS general | Nodo y lista de hijos. | Subárboles, caminos y Tries. |
+| Búsqueda dirigida | Solo las ramas compatibles. | ABB, B-Trees y árboles de decisión. |
+| Recorrido con poda | Descarta regiones o intervalos imposibles. | Segment Tree, Quadtree, Octree y K-D Tree. |
+| Hojas enlazadas | Localiza una hoja y avanza secuencialmente. | Rangos en B+ Tree. |
+| Saltos de índice | Cambia el índice mediante bits. | Fenwick Tree. |
+
+## Errores conceptuales adicionales
+
+- **"Profundidad y altura son lo mismo."** La profundidad parte de la raíz; la altura se dirige hacia una hoja.
+- **"El hijo izquierdo siempre debe existir antes que el derecho."** Esa condición pertenece a los árboles completos, no a todo árbol binario.
+- **"B-Tree significa Binary Tree."** No. Un B-Tree puede tener muchas claves y muchos hijos por nodo.
+- **"Un Trie guarda necesariamente la palabra completa en cada nodo."** Normalmente cada arista representa un carácter y los nodos marcan prefijos o finales.
+- **"Segment Tree y Fenwick Tree se recorren con inorden."** Sus operaciones se basan en intervalos o saltos de índice, no en el orden de un ABB.
+- **"Balanceado significa perfecto."** Un árbol puede estar balanceado sin llenar todos sus niveles.
+
+
+## Actividades complementarias
+
+### Actividad 1: identificar propiedades
+
+```text
+          25
+        /    \
+       15     40
+      / \    / \
+     10 20  30 50
+```
+
+1. Identifica raíz, hojas y nodos internos.
+2. Calcula la altura del árbol y la profundidad de `30`.
+3. Determina el grado de `40` y el grado del árbol.
+4. Indica si es binario, estricto, perfecto, completo y ABB.
+5. Escribe preorden, inorden, postorden y recorrido por niveles.
+
+Respuestas:
+
+- Raíz: `25`.
+- Hojas: `10`, `20`, `30`, `50`.
+- Nodos internos: `25`, `15`, `40`.
+- Altura: `2`.
+- Profundidad de `30`: `2`.
+- Grado de `40`: `2`; grado del árbol: `2`.
+- Es binario, estricto, perfecto, completo y ABB.
+- Preorden: `25, 15, 10, 20, 40, 30, 50`.
+- Inorden: `10, 15, 20, 25, 30, 40, 50`.
+- Postorden: `10, 20, 15, 30, 50, 40, 25`.
+- Por niveles: `25, 15, 40, 10, 20, 30, 50`.
+
+### Actividad 2: comparar estructuras
+
+Selecciona entre ABB, AVL, rojo-negro, heap, B+ Tree, Trie, Segment Tree y K-D Tree:
+
+1. Autocompletado de palabras.
+2. Cola de trabajos con prioridad.
+3. Índice de base de datos con consultas por rango.
+4. Conjunto ordenado dominado por búsquedas.
+5. Conjunto ordenado con inserciones y eliminaciones frecuentes.
+6. Consultas de suma sobre intervalos que cambian.
+7. Búsqueda del punto más cercano.
+
+Respuestas sugeridas:
+
+1. Trie.
+2. Heap.
+3. B+ Tree.
+4. AVL.
+5. Rojo-negro.
+6. Segment Tree.
+7. K-D Tree.
+
+### Preguntas de comprobación
+
+1. ¿Por qué todo árbol perfecto es completo, pero no todo completo es perfecto?
+2. ¿Qué diferencia existe entre un árbol binario y un ABB?
+3. ¿Por qué las operaciones de un ABB se expresan primero como `O(h)`?
+4. ¿Cuáles son los tres casos de eliminación en un ABB?
+5. ¿Qué información adicional almacena AVL? ¿Qué información almacena rojo-negro?
+6. ¿Por qué un heap permite obtener el mínimo o máximo en `O(1)`, pero buscar cualquier valor cuesta `O(n)`?
+7. ¿Por qué B-Tree y B+ Tree reducen accesos a disco?
+8. ¿Qué ventaja proporcionan las hojas enlazadas de un B+ Tree?
+9. ¿Por qué un Trie depende de la longitud de la palabra y no directamente de la cantidad de palabras?
+10. ¿Qué significa podar una rama durante una consulta?
+11. ¿Cuándo elegirías Segment Tree en lugar de Fenwick Tree?
+12. ¿Qué diferencia existe entre Quadtree, Octree y K-D Tree?
+
+## Cierre complementario
+
+Los árboles no constituyen una única estructura, sino una familia de soluciones. La forma controla la altura; la regla de organización determina qué ramas pueden descartarse; y la operación dominante define cuál variante conviene utilizar.
+
+- ABB, AVL, rojo-negro y Splay Tree resuelven orden y búsqueda dinámica.
+- Heap resuelve prioridad.
+- B-Tree y B+ Tree resuelven índices y almacenamiento por bloques.
+- Trie, Radix Tree y árboles de sufijos resuelven cadenas.
+- Árboles de expresión, AST y decisión representan procesos jerárquicos.
+- Segment Tree y Fenwick Tree resuelven consultas acumuladas o por rango.
+- Quadtree, Octree y K-D Tree organizan el espacio.
+
+La pregunta correcta no es solamente "¿qué árbol conozco?", sino "¿qué operación necesito optimizar y qué propiedad me permite descartar trabajo?".
+
+---
+
+[← Volver a Árboles](/teaching/data-structures/2p/arboles)
