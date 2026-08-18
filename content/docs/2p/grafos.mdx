@@ -1675,9 +1675,12 @@ public Map<String, Integer> dijkstra(String inicio) {
     distancias = new HashMap<>();
     anterior = new HashMap<>();
 
+    // Prioriza por distancia acumulada, no por orden de llegada: así
+    // siempre se procesa primero el vértice con la mejor distancia conocida.
     PriorityQueue<NodoDistancia> cola =
         new PriorityQueue<>(Comparator.comparingInt(nodo -> nodo.distancia));
 
+    // Todas las distancias empiezan en infinito, excepto el origen.
     for (String vertice : adyacencia.keySet()) {
         distancias.put(vertice, Integer.MAX_VALUE);
     }
@@ -1688,6 +1691,8 @@ public Map<String, Integer> dijkstra(String inicio) {
     while (!cola.isEmpty()) {
         NodoDistancia actual = cola.poll();
 
+        // Entrada obsoleta: este vértice ya se relajó a un costo menor
+        // después de que esta copia se insertó en la cola.
         if (actual.distancia > distancias.get(actual.vertice)) {
             continue;
         }
@@ -1695,9 +1700,10 @@ public Map<String, Integer> dijkstra(String inicio) {
         for (Arista arista : adyacencia.get(actual.vertice)) {
             int nuevaDistancia = actual.distancia + arista.peso;
 
+            // Relajación: solo actualizamos si encontramos una ruta mejor.
             if (nuevaDistancia < distancias.get(arista.destino)) {
                 distancias.put(arista.destino, nuevaDistancia);
-                anterior.put(arista.destino, actual.vertice);
+                anterior.put(arista.destino, actual.vertice); // para reconstruirRuta
                 cola.offer(new NodoDistancia(arista.destino, nuevaDistancia));
             }
         }
@@ -1711,17 +1717,20 @@ public List<String> reconstruirRuta(String destino) {
         throw new IllegalStateException("Ejecuta dijkstra(origen) antes de reconstruir una ruta.");
     }
 
+    // Sin entrada en distancias, o todavía en infinito: destino inalcanzable.
     if (!distancias.containsKey(destino) || distancias.get(destino) == Integer.MAX_VALUE) {
         return List.of();
     }
 
     List<String> ruta = new ArrayList<>();
 
+    // anterior[destino] apunta hacia el origen; se retrocede hasta llegar
+    // a un vértice sin predecesor (el propio origen).
     for (String actual = destino; actual != null; actual = anterior.get(actual)) {
         ruta.add(actual);
     }
 
-    Collections.reverse(ruta);
+    Collections.reverse(ruta); // la construimos al revés, de destino a origen
     return ruta;
 }
 ```
@@ -1807,9 +1816,12 @@ public class GrafoPonderado {
         distancias = new HashMap<>();
         anterior = new HashMap<>();
 
+        // Prioriza por distancia acumulada, no por orden de llegada: así
+        // siempre se procesa primero el vértice con la mejor distancia conocida.
         PriorityQueue<NodoDistancia> cola =
             new PriorityQueue<>(Comparator.comparingInt(nodo -> nodo.distancia));
 
+        // Todas las distancias empiezan en infinito, excepto el origen.
         for (String vertice : adyacencia.keySet()) {
             distancias.put(vertice, Integer.MAX_VALUE);
         }
@@ -1820,6 +1832,8 @@ public class GrafoPonderado {
         while (!cola.isEmpty()) {
             NodoDistancia actual = cola.poll();
 
+            // Entrada obsoleta: este vértice ya se relajó a un costo menor
+            // después de que esta copia se insertó en la cola.
             if (actual.distancia > distancias.get(actual.vertice)) {
                 continue;
             }
@@ -1827,9 +1841,10 @@ public class GrafoPonderado {
             for (Arista arista : adyacencia.get(actual.vertice)) {
                 int nuevaDistancia = actual.distancia + arista.peso;
 
+                // Relajación: solo actualizamos si encontramos una ruta mejor.
                 if (nuevaDistancia < distancias.get(arista.destino)) {
                     distancias.put(arista.destino, nuevaDistancia);
-                    anterior.put(arista.destino, actual.vertice);
+                    anterior.put(arista.destino, actual.vertice); // para reconstruirRuta
                     cola.offer(new NodoDistancia(arista.destino, nuevaDistancia));
                 }
             }
@@ -1843,17 +1858,20 @@ public class GrafoPonderado {
             throw new IllegalStateException("Ejecuta dijkstra(origen) antes de reconstruir una ruta.");
         }
 
+        // Sin entrada en distancias, o todavía en infinito: destino inalcanzable.
         if (!distancias.containsKey(destino) || distancias.get(destino) == Integer.MAX_VALUE) {
             return List.of();
         }
 
         List<String> ruta = new ArrayList<>();
 
+        // anterior[destino] apunta hacia el origen; se retrocede hasta llegar
+        // a un vértice sin predecesor (el propio origen).
         for (String actual = destino; actual != null; actual = anterior.get(actual)) {
             ruta.add(actual);
         }
 
-        Collections.reverse(ruta);
+        Collections.reverse(ruta); // la construimos al revés, de destino a origen
         return ruta;
     }
 
@@ -2059,12 +2077,15 @@ public class BellmanFord {
 
         resultado.distancias.put(origen, 0L);
 
+        // Un camino simple tiene como máximo V-1 aristas, así que V-1 pasadas
+        // bastan para propagar cualquier mejora posible desde el origen.
         for (int pasada = 1; pasada < vertices.size(); pasada++) {
             boolean huboCambio = false;
 
             for (Arista arista : aristas) {
                 long distanciaOrigen = resultado.distancias.get(arista.origen);
 
+                // Sin distancia = arista.origen todavía no es alcanzable; nada que relajar.
                 if (distanciaOrigen == Long.MAX_VALUE) continue;
 
                 long propuesta = distanciaOrigen + arista.peso;
@@ -2077,9 +2098,13 @@ public class BellmanFord {
                 }
             }
 
+            // Nada mejoró en una pasada completa: ya no hay nada más que propagar.
             if (!huboCambio) break;
         }
 
+        // Pasada extra: si todavía se puede relajar algo después de agotar
+        // las V-1 pasadas necesarias para cualquier camino simple, la única
+        // explicación es un ciclo negativo alcanzable desde el origen.
         for (Arista arista : aristas) {
             long distanciaOrigen = resultado.distancias.get(arista.origen);
 
@@ -2284,6 +2309,8 @@ public class FloydWarshall {
         long[][] dist = new long[n][n];
         int[][] siguiente = new int[n][n];
 
+        // Copia inicial: distancia directa según los pesos, y el primer
+        // salto de cada ruta es, por ahora, el destino mismo (ruta directa).
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
                 dist[i][j] = pesos[i][j];
@@ -2293,17 +2320,20 @@ public class FloydWarshall {
             siguiente[i][i] = i;
         }
 
+        // k es el ciclo EXTERIOR a propósito: en la etapa k solo pueden
+        // usarse como intermediarios los vértices 0..k ya habilitados.
         for (int k = 0; k < n; k++) {
             for (int i = 0; i < n; i++) {
                 for (int j = 0; j < n; j++) {
                     if (dist[i][k] == INF || dist[k][j] == INF) {
-                        continue;
+                        continue; // pasar por k no es una ruta válida todavía
                     }
 
                     long alternativa = dist[i][k] + dist[k][j];
 
                     if (alternativa < dist[i][j]) {
                         dist[i][j] = alternativa;
+                        // El primer salto de i a j ahora es el mismo que el de i a k.
                         siguiente[i][j] = siguiente[i][k];
                     }
                 }
@@ -2487,6 +2517,8 @@ public class Prim {
 
         Resultado resultado = new Resultado();
         Set<String> visitados = new HashSet<>();
+        // Prioriza por peso de arista, no por distancia acumulada: a
+        // diferencia de Dijkstra, no importa cuánto costó llegar hasta aquí.
         PriorityQueue<Candidata> cola = new PriorityQueue<>(Comparator.comparingInt(a -> a.peso));
 
         visitados.add(inicio);
@@ -2494,12 +2526,14 @@ public class Prim {
 
         while (!cola.isEmpty() && resultado.aristas.size() < grafo.size() - 1) {
             Candidata arista = cola.poll();
+            // El destino ya está en el árbol por una arista más barata; descartar.
             if (visitados.contains(arista.destino)) continue;
 
             visitados.add(arista.destino);
             resultado.aristas.add(arista);
             resultado.costoTotal += arista.peso;
 
+            // El árbol creció: sus nuevas aristas salientes son candidatas.
             agregarCandidatas(grafo, arista.destino, visitados, cola);
         }
 
@@ -2631,6 +2665,9 @@ public class Kruskal {
             String padreActual = padre.get(vertice);
 
             if (!padreActual.equals(vertice)) {
+                // Compresión de caminos: al volver de la recursión, cuelga
+                // "vertice" directamente de la raíz para que la próxima
+                // búsqueda no tenga que recorrer toda la cadena otra vez.
                 padre.put(vertice, encontrar(padreActual));
             }
             return padre.get(vertice);
@@ -2640,11 +2677,13 @@ public class Kruskal {
             String raizA = encontrar(a);
             String raizB = encontrar(b);
 
-            if (raizA.equals(raizB)) return false;
+            if (raizA.equals(raizB)) return false; // ya están en el mismo conjunto
 
             int rangoA = rango.get(raizA);
             int rangoB = rango.get(raizB);
 
+            // Unión por rango: el árbol más bajo se cuelga del más alto,
+            // para no alargar innecesariamente la cadena hacia la raíz.
             if (rangoA < rangoB) {
                 padre.put(raizA, raizB);
             } else if (rangoA > rangoB) {
@@ -2663,6 +2702,7 @@ public class Kruskal {
     }
 
     static Resultado calcular(List<String> vertices, List<Arista> aristas) {
+        // Kruskal es voraz: siempre evalúa la arista más barata disponible primero.
         List<Arista> ordenadas = new ArrayList<>(aristas);
         ordenadas.sort(Comparator.comparingInt(a -> a.peso));
 
@@ -2670,11 +2710,14 @@ public class Kruskal {
         Resultado resultado = new Resultado();
 
         for (Arista arista : ordenadas) {
+            // unir() devuelve false si origen y destino ya están en el mismo
+            // conjunto: agregar esa arista formaría un ciclo, así que se descarta.
             if (conjuntos.unir(arista.origen, arista.destino)) {
                 resultado.aristas.add(arista);
                 resultado.costoTotal += arista.peso;
             }
 
+            // Un MST tiene exactamente V-1 aristas: no hace falta revisar el resto.
             if (resultado.aristas.size() == vertices.size() - 1) {
                 break;
             }

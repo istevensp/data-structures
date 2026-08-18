@@ -17,11 +17,11 @@ Comprender la terminología permite describir cualquier árbol con precisión.
 |---|---|---|
 | Nodo | Elemento que almacena un valor y referencias o enlaces. | `10`, `5`, `15`, `3`, `7`, `12`, `20`. |
 | Raíz | Primer nodo del árbol; no tiene padre. | `10`. |
-| Padre | Nodo con uno o más hijos directos. | `5` es padre de `3` y `7`. |
+| Padre | Nodo considerado en relación con un hijo específico: es su padre. | `5` es padre de `3` y de `7`. |
 | Hijo | Nodo ubicado directamente debajo de otro. | `12` es hijo de `15`. |
 | Hermanos | Nodos que comparten el mismo padre. | `3` y `7`. |
 | Hoja | Nodo que no tiene hijos. | `3`, `7`, `12`, `20`. |
-| Nodo interno | Nodo que tiene al menos un hijo. | `10`, `5`, `15`. |
+| Nodo interno | Clasificación absoluta: cualquier nodo con al menos un hijo (lo opuesto a hoja) — el mismo conjunto de nodos que aparecen como "padre" de alguien, pero visto sin referencia a un hijo en particular. | `10`, `5`, `15`. |
 | Arista | Conexión directa entre dos nodos. | `10–5`. |
 | Camino | Secuencia de nodos conectados por aristas. | `10 → 5 → 7`. |
 | Ancestro | Nodo anterior en el camino desde la raíz. | `10` y `5` son ancestros de `7`. |
@@ -108,7 +108,7 @@ Un árbol binario permite como máximo dos hijos por nodo: izquierdo y derecho. 
 
 Un árbol binario no está necesariamente ordenado. Si no existe una propiedad de orden, buscar un valor arbitrario cuesta `O(n)`.
 
-Es la forma base utilizada por ABB, AVL, heaps, árboles de expresión, árboles de decisión y codificación de Huffman.
+Es la forma base utilizada por ABB, AVL, heaps, árboles de expresión, codificación de Huffman y árboles de decisión binarios (los que solo separan en dos ramas por condición, como el ejemplo de esta página) — un árbol de decisión general puede tener más de dos ramas por nodo si una condición admite más de dos resultados.
 
 ## Clasificación de árboles binarios según su forma
 
