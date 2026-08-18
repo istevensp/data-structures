@@ -264,6 +264,30 @@ En una lista, cada elemento tiene un siguiente bien definido. En un grafo, desde
 
 > BFS y DFS son algoritmos de recorrido o exploración. Más adelante veremos que Dijkstra resuelve un problema diferente: caminos mínimos.
 
+### ¿Por qué necesitamos un conjunto de visitados?
+
+En un árbol, cada nodo (salvo la raíz) tiene un único padre: no existe forma de volver a alcanzarlo por otro camino. En un grafo esto no es cierto. Nuestro grafo de ejemplo ya contiene un ciclo (`A -> B -> D -> C -> A`) y, además, pueden existir varios caminos distintos hacia un mismo vértice: `C` es alcanzable desde `A` directamente y también pasando por `B` y `D`.
+
+```text
+A → B → D
+│       │
+└→ C ←──┘
+```
+
+Sin un conjunto de visitados, un recorrido podría procesar `A`, `B`, `C` y `D` una y otra vez, o quedar atrapado en un ciclo infinito. Por eso tanto BFS como DFS mantienen:
+
+```java
+Set<String> visitados = new HashSet<>();
+```
+
+La operación `visitados.add(vertice)` resulta especialmente útil porque devuelve un `boolean`: `true` cuando el vértice no estaba registrado y acaba de agregarse, `false` cuando ya había sido visitado.
+
+```java
+if (visitados.add(vecino)) {
+    // Se descubrió por primera vez.
+}
+```
+
 ## BFS: recorrido en anchura
 
 BFS (*Breadth-First Search*) explora primero los vértices más cercanos al origen, por niveles:
@@ -274,9 +298,21 @@ Nivel 1: B, C
 Nivel 2: D, E
 ```
 
+### ¿Cómo reconocer cuándo usar BFS?
+
+Usa BFS cuando la pregunta contiene ideas como:
+
+- "Más cercano por cantidad de conexiones".
+- "Menor número de saltos".
+- "Explorar nivel por nivel".
+- "Encontrar todos los elementos a distancia `k`".
+- "Separar un grafo no dirigido en componentes conexas".
+
+BFS encuentra caminos mínimos únicamente cuando todas las aristas tienen el mismo costo o cuando el grafo no está ponderado. Si los pesos son distintos, se necesita un algoritmo como Dijkstra (más adelante en esta lección).
+
 ### BFS utiliza una cola
 
-BFS utiliza una estructura FIFO (*first in, first out*):
+BFS utiliza una estructura FIFO (*first in, first out*): el primer vértice descubierto es el primero que se procesa, lo que conserva el orden por niveles.
 
 ```text
 1. Insertar el vértice inicial y marcarlo como visitado.
@@ -290,6 +326,57 @@ En Java, preferir `Queue<String>` respaldada por `ArrayDeque`, no `LinkedList`, 
 
 ```java
 Queue<String> cola = new ArrayDeque<>();
+```
+
+`offer` agrega al final y `poll` retira el primer elemento.
+
+### Pseudocódigo de BFS
+
+```text
+BFS(grafo, inicio):
+    visitados = conjunto vacío
+    cola = cola vacía
+
+    agregar inicio a visitados
+    insertar inicio en cola
+
+    mientras cola no esté vacía:
+        actual = retirar el primero de cola
+        procesar actual
+
+        para cada vecino de actual:
+            si vecino no está visitado:
+                marcar vecino como visitado
+                insertar vecino al final de cola
+```
+
+### ¿Por qué se marca al encolar y no al desencolar?
+
+Un vértice debe marcarse como visitado en el momento en que se descubre y se agrega a la cola, no cuando finalmente se extrae. De lo contrario, dos vértices diferentes podrían encolar al mismo vecino antes de que este sea procesado, y ese vecino terminaría en la cola más de una vez:
+
+```text
+B descubre D ─┐
+              ├─ si D aún no está marcado, podría entrar dos veces
+C descubre D ─┘
+```
+
+### Ejecución paso a paso
+
+Los vecinos se recorren en el orden en que fueron insertados (`A -> [B, C]`, `B -> [A, D]`, `C -> [A, D, E]`, `D -> [B, C]`, `E -> [C]`):
+
+| Paso | Se extrae | Vecinos examinados | Cola al finalizar | Visitados |
+|---|---|---|---|---|
+| Inicial | — | — | `[A]` | `{A}` |
+| 1 | `A` | `B`, `C` | `[B, C]` | `{A, B, C}` |
+| 2 | `B` | `A`, `D` | `[C, D]` | `{A, B, C, D}` |
+| 3 | `C` | `A`, `D`, `E` | `[D, E]` | `{A, B, C, D, E}` |
+| 4 | `D` | `B`, `C` | `[E]` | `{A, B, C, D, E}` |
+| 5 | `E` | `C` | `[]` | `{A, B, C, D, E}` |
+
+Resultado:
+
+```text
+A -> B -> C -> D -> E
 ```
 
 ### BFS en Java
@@ -320,12 +407,6 @@ public void bfs(String inicio) {
 }
 ```
 
-Recorriendo el grafo de ejemplo desde `A`, con los vecinos en el orden en que fueron insertados, BFS produce:
-
-```text
-A -> B -> C -> D -> E
-```
-
 **¿Qué está pasando en memoria?**
 
 ```text
@@ -335,12 +416,140 @@ cola      = [B, C]
 
 Justo después de procesar `A`. El conjunto `visitados` evita procesar un vértice nuevamente — indispensable porque un grafo puede contener ciclos, a diferencia de un árbol. La cola determina cuál es el próximo vértice: BFS usa FIFO.
 
-### ¿Para qué sirve BFS?
+### Camino mínimo sin pesos
 
-- Recorrer todos los vértices alcanzables desde un origen.
-- Verificar conectividad.
-- Explorar por niveles.
-- Encontrar el camino con menor número de aristas en grafos **no ponderados**.
+El primer vértice que descubre a un vecino establece un camino con la menor cantidad de aristas posible hacia él. Para reconstruirlo se guarda un **mapa de predecesores** (`anterior`) mientras se recorre, y al final se retrocede desde el destino hasta el origen:
+
+```java
+public List<String> caminoMinimoBfs(String origen, String destino) {
+    validarVertice(origen);
+    validarVertice(destino);
+
+    Set<String> visitados = new HashSet<>();
+    Map<String, String> anterior = new HashMap<>();
+    Queue<String> cola = new ArrayDeque<>();
+
+    visitados.add(origen);
+    cola.offer(origen);
+
+    while (!cola.isEmpty()) {
+        String actual = cola.poll();
+
+        if (actual.equals(destino)) break;
+
+        for (String vecino : adyacencia.get(actual)) {
+            if (visitados.add(vecino)) {
+                anterior.put(vecino, actual);
+                cola.offer(vecino);
+            }
+        }
+    }
+
+    if (!visitados.contains(destino)) {
+        return List.of();
+    }
+
+    List<String> ruta = new ArrayList<>();
+
+    for (String actual = destino; actual != null; actual = anterior.get(actual)) {
+        ruta.add(actual);
+    }
+
+    Collections.reverse(ruta);
+    return ruta;
+}
+```
+
+Para el grafo de ejemplo, `caminoMinimoBfs("A", "E")` devuelve `[A, C, E]`. El mapa queda:
+
+```text
+anterior[B] = A
+anterior[C] = A
+anterior[D] = B
+anterior[E] = C
+```
+
+La ruta se reconstruye desde `E` hacia atrás (`E -> C -> A`) y luego se invierte con `Collections.reverse`.
+
+### Distancia en número de aristas
+
+También puede guardarse el nivel de cada vértice a medida que se descubre:
+
+```java
+Map<String, Integer> distancia = new HashMap<>();
+distancia.put(inicio, 0);
+
+// Al descubrir un vecino:
+distancia.put(vecino, distancia.get(actual) + 1);
+```
+
+Así, `distancia.get("E")` vale `2`, porque la ruta `A -> C -> E` contiene dos aristas.
+
+### Grafos desconectados y componentes conexas
+
+Un BFS iniciado en `A` solo visita la componente que contiene a `A`. Para recorrer un grafo completo — incluidos los vértices que no son alcanzables desde ningún punto de partida único — se inicia un nuevo BFS desde cada vértice todavía no visitado:
+
+```java
+public List<List<String>> componentesConexas() {
+    Set<String> visitados = new HashSet<>();
+    List<List<String>> componentes = new ArrayList<>();
+
+    for (String inicio : adyacencia.keySet()) {
+        if (visitados.contains(inicio)) continue;
+
+        List<String> componente = new ArrayList<>();
+        Queue<String> cola = new ArrayDeque<>();
+
+        visitados.add(inicio);
+        cola.offer(inicio);
+
+        while (!cola.isEmpty()) {
+            String actual = cola.poll();
+            componente.add(actual);
+
+            for (String vecino : adyacencia.get(actual)) {
+                if (visitados.add(vecino)) {
+                    cola.offer(vecino);
+                }
+            }
+        }
+
+        componentes.add(componente);
+    }
+
+    return componentes;
+}
+```
+
+Si a nuestro grafo le agregamos una arista `F-G` completamente separada del resto, `componentesConexas()` devuelve `[[A, B, C, D, E], [F, G]]`: dos grupos, porque no existe ninguna arista entre `{A, B, C, D, E}` y `{F, G}`.
+
+Este método está definido para grafos **no dirigidos**. Aplicado sin cambios a un grafo dirigido, el resultado depende del orden de los vértices y no representa correctamente componentes débilmente ni fuertemente conexas — esas requieren algoritmos como Kosaraju o Tarjan, fuera del alcance de esta lección.
+
+### Aplicaciones reales de BFS
+
+- Encontrar la cantidad mínima de transbordos en una red donde cada conexión tiene el mismo costo.
+- Calcular grados de separación en una red social.
+- Explorar dispositivos o servicios por cantidad de saltos.
+- Recorrer páginas o recursos por niveles en un rastreador.
+- Buscar el menor número de movimientos en rompecabezas y videojuegos.
+- Propagar una señal, evento o actualización por capas.
+- Encontrar el elemento más cercano que cumpla una condición.
+
+En infraestructura de nube, subredes, servicios, dependencias y permisos pueden modelarse como grafos para analizar alcance o cantidad de saltos. Esto es una aplicación conceptual; no implica que un producto específico de AWS publique BFS como su algoritmo interno.
+
+### ¿Por qué BFS es naturalmente iterativo?
+
+BFS es naturalmente **iterativo** porque su estado principal es una cola que cambia dinámicamente durante la exploración. Puede simularse recursivamente procesando niveles completos, pero la recursión no simplifica el algoritmo y añade consumo de pila sin ninguna ventaja. La implementación recomendada en Java es iterativa.
+
+### Complejidad de BFS
+
+Con lista de adyacencia:
+
+- Tiempo: `O(V + A)`.
+- Memoria para `visitados`, cola, distancias y predecesores: `O(V)`.
+- La cola puede contener hasta `O(V)` vértices en el peor caso.
+
+Con matriz de adyacencia, examinar la fila completa de cada vértice produce `O(V²)`.
 
 ## DFS: recorrido en profundidad
 
@@ -358,9 +567,59 @@ Sobre el mismo grafo, un recorrido DFS desde `A` produce:
 A -> B -> D -> C -> E
 ```
 
-El orden exacto puede variar según cómo estén almacenados los vecinos de cada vértice; para esta lección conservamos el orden de inserción para que el ejemplo sea reproducible.
+El orden exacto depende de cómo estén almacenados los vecinos de cada vértice; DFS no decide por sí mismo si debe visitar primero `B` o `C`.
 
-### DFS recursivo
+### Orden reproducible
+
+`ArrayList` conserva el orden de inserción de los vecinos, por lo que un recorrido iniciado en un vértice conocido es reproducible entre ejecuciones. `HashMap`, en cambio, no garantiza el orden al iterar sobre todas sus claves — por eso, cuando un método recorre `adyacencia.keySet()` completo (como `componentesConexas` o los detectores de ciclos), el orden entre componentes puede variar entre ejecuciones, aunque el resultado dentro de cada componente no cambie. Si un ejemplo necesita un orden completamente estable, puede usarse `LinkedHashMap` o recorrer una lista de vértices ya ordenada; no es necesario para esta lección.
+
+### ¿Cómo reconocer cuándo usar DFS?
+
+Usa DFS cuando la pregunta contiene ideas como:
+
+- "Explorar una rama completa".
+- "¿Existe algún camino?".
+- "Detectar un ciclo".
+- "Procesar dependencias antes que el elemento que depende de ellas".
+- "Enumerar soluciones mediante retroceso".
+- "Separar componentes".
+- "Ordenar un grafo dirigido sin ciclos".
+
+DFS puede encontrar un camino, pero no garantiza que tenga la menor cantidad de aristas ni el menor peso.
+
+### Pseudocódigo recursivo
+
+```text
+DFS_RECURSIVO(grafo, actual, visitados):
+    marcar actual como visitado
+    procesar actual
+
+    para cada vecino de actual:
+        si vecino no está visitado:
+            DFS_RECURSIVO(grafo, vecino, visitados)
+```
+
+La definición es recursiva porque, después de elegir un vecino, se repite exactamente el mismo problema desde ese vecino.
+
+### Pila de llamadas paso a paso
+
+| Paso | Acción | Pila de llamadas conceptual |
+|---|---|---|
+| 1 | Entrar en `A` | `[A]` |
+| 2 | Desde `A`, entrar en `B` | `[A, B]` |
+| 3 | Desde `B`, entrar en `D` | `[A, B, D]` |
+| 4 | Desde `D`, entrar en `C` | `[A, B, D, C]` |
+| 5 | Desde `C`, entrar en `E` | `[A, B, D, C, E]` |
+| 6 | `E` no tiene vecinos nuevos; retroceder | `[A, B, D, C]` |
+| 7 | Las llamadas restantes terminan sin encontrar vecinos nuevos | `[]` |
+
+Resultado:
+
+```text
+A -> B -> D -> C -> E
+```
+
+### DFS recursivo en Java
 
 ```java
 public void dfsRecursivo(String inicio) {
@@ -389,6 +648,31 @@ Aquí Java utiliza internamente la pila de llamadas de la recursividad: no admin
 ### DFS iterativo
 
 También puede escribirse con una pila explícita. **No usar la clase `Stack`** (es una clase antigua de Java, sincronizada innecesariamente y con una API poco consistente): usar `Deque<String>` respaldada por `ArrayDeque`, con `push`, `pop` y `peek`.
+
+```text
+DFS_ITERATIVO(grafo, inicio):
+    visitados = conjunto vacío
+    pila = pila vacía
+
+    apilar inicio
+
+    mientras pila no esté vacía:
+        actual = desapilar
+
+        si actual ya está visitado:
+            continuar  // duplicado, ya se procesó antes
+
+        marcar actual como visitado
+        procesar actual
+
+        recorrer los vecinos de actual en orden inverso:
+            si vecino no está visitado:
+                apilar vecino
+```
+
+Los vecinos se apilan en orden inverso porque una pila es LIFO: así el primer vecino de la lista queda arriba y es el próximo en explorarse, igual que en la versión recursiva. Este pseudocódigo marca un vértice como visitado **al extraerlo** de la pila, no al apilarlo — es la variante que ya usa esta lección. Esta lección usa **tres variantes válidas** de DFS iterativo, con una diferencia importante entre ellas: exactamente en qué momento se marca un vértice como visitado.
+
+#### Variante 1: marca al extraer (la que ya usa esta lección)
 
 ```java
 public void dfsIterativo(String inicio) {
@@ -423,8 +707,6 @@ public void dfsIterativo(String inicio) {
 }
 ```
 
-Los vecinos se apilan en orden inverso para que, al desapilar, se explore primero el mismo vecino que exploraría la versión recursiva.
-
 **¿Qué está pasando en memoria?**
 
 Justo después de extraer `A`, `B` y `D` (en ese orden):
@@ -434,15 +716,273 @@ visitados = {A, B, D}
 pila      = [C, C]
 ```
 
-`C` aparece dos veces: la primera vez quedó en la pila al procesar `A` (vecinos `B`, `C`); la segunda se agregó al procesar `D`, porque en ese momento `C` todavía no estaba marcado como visitado. Cuando se extraiga la primera copia, se marcará visitado y se procesará normalmente. Cuando se extraiga la segunda copia (el duplicado), la comprobación `if (!visitados.add(actual)) continue;` la descarta sin volver a procesarla — por eso esa comprobación es indispensable en la versión iterativa, y no solo un detalle de estilo.
+`C` aparece dos veces: la primera vez quedó en la pila al procesar `A` (vecinos `B`, `C`); la segunda se agregó al procesar `D`, porque en ese momento `C` todavía no estaba marcado como visitado. Cuando se extraiga la primera copia, se marcará visitado y se procesará normalmente. Cuando se extraiga la segunda copia (el duplicado), la comprobación `if (!visitados.add(actual)) continue;` la descarta sin volver a procesarla — por eso esa comprobación es indispensable en esta variante, y no solo un detalle de estilo. Su ventaja didáctica es que se aproxima bien al orden de descubrimiento de la versión recursiva.
+
+#### Variante 2: marca al apilar (evita duplicados)
+
+```java
+public void dfsIterativoMarcandoAlApilar(String inicio) {
+    validarVertice(inicio);
+
+    Set<String> visitados = new HashSet<>();
+    Deque<String> pila = new ArrayDeque<>();
+
+    visitados.add(inicio);
+    pila.push(inicio);
+
+    while (!pila.isEmpty()) {
+        String actual = pila.pop();
+        System.out.print(actual + " ");
+
+        List<String> vecinos = adyacencia.get(actual);
+
+        for (int i = vecinos.size() - 1; i >= 0; i--) {
+            String vecino = vecinos.get(i);
+
+            if (visitados.add(vecino)) {
+                pila.push(vecino);
+            }
+        }
+    }
+
+    System.out.println();
+}
+```
+
+Esta versión marca un vértice como visitado en el momento en que lo apila, no cuando lo procesa. Así cada vértice entra en la pila una sola vez y nunca aparecen duplicados temporales — pero **puede construir un árbol de recorrido distinto al de la versión recursiva** cuando el grafo tiene aristas cruzadas, porque un vértice puede "reclamarse" desde una rama distinta a la que lo habría alcanzado la recursión. Apilar los vecinos en orden inverso reduce las diferencias, pero no garantiza por sí solo una equivalencia exacta.
+
+#### Variante 3: marcos explícitos (reproduce exactamente la recursión)
+
+Si se necesita el mismo árbol y el mismo orden que la recursión, sin usar la pila de llamadas de Java, la pila explícita debe guardar un **marco** con el vértice actual y la posición del próximo vecino pendiente — exactamente lo que una llamada recursiva suspendida recordaría:
+
+```java
+private static class MarcoDfs {
+    String vertice;
+    int siguienteVecino;
+
+    MarcoDfs(String vertice) {
+        this.vertice = vertice;
+    }
+}
+
+public void dfsIterativoExacto(String inicio) {
+    validarVertice(inicio);
+
+    Set<String> visitados = new HashSet<>();
+    Deque<MarcoDfs> pila = new ArrayDeque<>();
+
+    visitados.add(inicio);
+    System.out.print(inicio + " ");
+    pila.push(new MarcoDfs(inicio));
+
+    while (!pila.isEmpty()) {
+        MarcoDfs marco = pila.peek();
+        List<String> vecinos = adyacencia.get(marco.vertice);
+
+        if (marco.siguienteVecino == vecinos.size()) {
+            pila.pop();
+            continue;
+        }
+
+        String vecino = vecinos.get(marco.siguienteVecino);
+        marco.siguienteVecino++;
+
+        if (visitados.add(vecino)) {
+            System.out.print(vecino + " ");
+            pila.push(new MarcoDfs(vecino));
+        }
+    }
+
+    System.out.println();
+}
+```
+
+Sobre el grafo de esta lección, las tres variantes producen el mismo resultado, `A B D C E`, porque no tiene aristas cruzadas que las hagan divergir. La diferencia entre variante 2 y la recursión aparece en grafos con una topología más compleja.
+
+### Recursivo frente a iterativo
+
+| Aspecto | DFS recursivo | DFS iterativo |
+|---|---|---|
+| Pila | Pila de llamadas de Java. | `Deque` administrado explícitamente. |
+| Claridad | Muy cercano a la definición matemática. | Estado más visible y controlable. |
+| Riesgo | `StackOverflowError` en grafos muy profundos. | Limitado principalmente por la memoria disponible. |
+| Orden | Sigue directamente el orden de vecinos. | Puede invertir el árbol de recorrido; para igualdad exacta necesita marcos explícitos. |
+| Uso recomendado | Ejemplos, grafos pequeños o profundidad controlada. | Entradas grandes o profundidad desconocida. |
+
+La forma recursiva es natural para explicar DFS. La forma iterativa es más robusta para datos grandes, donde una recursión profunda arriesgaría un `StackOverflowError`.
+
+### Reconstrucción de un camino con DFS
+
+DFS puede registrar predecesores igual que BFS. La diferencia es que el camino encontrado no tiene por qué ser el más corto:
+
+```java
+public List<String> buscarCaminoDfs(String origen, String destino) {
+    validarVertice(origen);
+    validarVertice(destino);
+
+    Set<String> visitados = new HashSet<>();
+    Map<String, String> anterior = new HashMap<>();
+
+    boolean encontrado = buscarCaminoDfs(origen, destino, visitados, anterior);
+
+    if (!encontrado) return List.of();
+
+    List<String> ruta = new ArrayList<>();
+
+    for (String actual = destino; actual != null; actual = anterior.get(actual)) {
+        ruta.add(actual);
+    }
+
+    Collections.reverse(ruta);
+    return ruta;
+}
+
+private boolean buscarCaminoDfs(String actual, String destino, Set<String> visitados, Map<String, String> anterior) {
+    visitados.add(actual);
+
+    if (actual.equals(destino)) return true;
+
+    for (String vecino : adyacencia.get(actual)) {
+        if (!visitados.contains(vecino)) {
+            anterior.put(vecino, actual);
+
+            if (buscarCaminoDfs(vecino, destino, visitados, anterior)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+```
+
+Para buscar de `A` a `E`, `buscarCaminoDfs` devuelve `[A, B, D, C, E]` — un camino válido, pero con más aristas que el `[A, C, E]` que ya obtuvimos con BFS. Esa diferencia no es un error: BFS y DFS responden preguntas distintas.
+
+### Detectar ciclos en un grafo no dirigido
+
+Al recorrer un grafo no dirigido, la arista que regresa directamente al padre no representa un ciclo nuevo (es la misma arista recorrida en sentido contrario). Existe un ciclo cuando se encuentra un vecino ya visitado que **no** es el padre:
+
+```java
+public boolean tieneCicloNoDirigido() {
+    Set<String> visitados = new HashSet<>();
+
+    for (String inicio : adyacencia.keySet()) {
+        if (!visitados.contains(inicio) && tieneCicloNoDirigido(inicio, null, visitados)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+private boolean tieneCicloNoDirigido(String actual, String padre, Set<String> visitados) {
+    visitados.add(actual);
+
+    for (String vecino : adyacencia.get(actual)) {
+        if (!visitados.contains(vecino)) {
+            if (tieneCicloNoDirigido(vecino, actual, visitados)) {
+                return true;
+            }
+        } else if (!vecino.equals(padre)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+```
+
+El grafo principal de esta lección **sí** contiene un ciclo: `A -> B -> D -> C -> A`.
+
+Este detector supone un grafo simple (sin varias aristas paralelas entre el mismo par de vértices). Si se permitieran aristas paralelas, convendría identificar cada arista individualmente para distinguir la arista del padre de otra arista paralela distinta.
+
+### Detección de ciclos en grafos dirigidos
+
+En un grafo dirigido, un conjunto simple de visitados **no es suficiente**: alcanzar de nuevo un vértice ya visitado no siempre significa un ciclo, porque pudo alcanzarse por dos caminos distintos sin volver sobre sí mismo. Se necesitan tres estados:
+
+- `NO_VISITADO`: todavía no se ha explorado.
+- `EN_PROCESO`: está dentro de la ruta recursiva actual (alguno de sus ancestros en la pila de llamadas lo está explorando).
+- `FINALIZADO`: ya se exploraron todos sus descendientes.
+
+Encontrar una arista hacia un vértice `EN_PROCESO` revela un ciclo dirigido — significa que existe un camino desde ese vértice de regreso hacia sí mismo.
+
+```java
+private enum Estado {
+    NO_VISITADO,
+    EN_PROCESO,
+    FINALIZADO
+}
+
+public boolean tieneCicloDirigido() {
+    Map<String, Estado> estados = new HashMap<>();
+
+    for (String vertice : adyacencia.keySet()) {
+        estados.put(vertice, Estado.NO_VISITADO);
+    }
+
+    for (String vertice : adyacencia.keySet()) {
+        if (estados.get(vertice) == Estado.NO_VISITADO && tieneCicloDirigido(vertice, estados)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+private boolean tieneCicloDirigido(String actual, Map<String, Estado> estados) {
+    estados.put(actual, Estado.EN_PROCESO);
+
+    for (String vecino : adyacencia.get(actual)) {
+        Estado estadoVecino = estados.get(vecino);
+
+        if (estadoVecino == Estado.EN_PROCESO) {
+            return true;
+        }
+
+        if (estadoVecino == Estado.NO_VISITADO && tieneCicloDirigido(vecino, estados)) {
+            return true;
+        }
+    }
+
+    estados.put(actual, Estado.FINALIZADO);
+    return false;
+}
+```
+
+Este método requiere que el grafo se haya construido con `agregarAristaDirigida`, no con `agregarArista`. Sobre un grafo dirigido `X -> Y -> Z -> X`, `tieneCicloDirigido()` devuelve `true`; sobre `X -> Y -> Z` (sin la arista de regreso), devuelve `false`.
+
+Esta misma idea de tres estados permite realizar **ordenamiento topológico** cuando el grafo dirigido no contiene ciclos, aunque esa técnica queda fuera del alcance de esta lección.
+
+### Aplicaciones reales de DFS
+
+- Detectar ciclos en dependencias de software, tareas o módulos.
+- Construir un orden válido de compilación o despliegue mediante ordenamiento topológico.
+- Explorar laberintos y problemas de retroceso.
+- Identificar componentes conexas.
+- Verificar alcance entre recursos.
+- Analizar expresiones, AST y estructuras jerárquicas tratadas como grafos.
+- Servir como base para algoritmos de componentes fuertemente conexas, puentes y puntos de articulación.
+
+Una arquitectura de servicios o infraestructura como código puede modelarse como un grafo dirigido de dependencias. DFS permite explicar conceptualmente cómo detectar ciclos o producir un orden de creación; no debe afirmarse que una herramienta comercial específica usa esta implementación exacta sin documentación pública que lo confirme.
+
+### Complejidad de DFS
+
+Con lista de adyacencia:
+
+- Tiempo: `O(V + A)`.
+- Conjunto de visitados: `O(V)`.
+- Pila recursiva o explícita: hasta `O(V)` en el peor caso.
+
+Con matriz de adyacencia, examinar todos los posibles vecinos de cada vértice cuesta `O(V²)`.
 
 ### Código completo: Grafo.java
 
-Todo lo anterior reunido en una única clase ejecutable, exclusivamente para grafos no ponderados:
+Todo lo anterior reunido en una única clase ejecutable, exclusivamente para grafos no ponderados. Compilado y ejecutado para verificar cada resultado mostrado en esta sección:
 
 ```java
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -469,6 +1009,13 @@ public class Grafo {
 
         adyacencia.get(origen).add(destino);
         adyacencia.get(destino).add(origen);
+    }
+
+    public void agregarAristaDirigida(String origen, String destino) {
+        agregarVertice(origen);
+        agregarVertice(destino);
+
+        adyacencia.get(origen).add(destino);
     }
 
     public void imprimir() {
@@ -499,6 +1046,74 @@ public class Grafo {
         }
 
         System.out.println();
+    }
+
+    public List<String> caminoMinimoBfs(String origen, String destino) {
+        validarVertice(origen);
+        validarVertice(destino);
+
+        Set<String> visitados = new HashSet<>();
+        Map<String, String> anterior = new HashMap<>();
+        Queue<String> cola = new ArrayDeque<>();
+
+        visitados.add(origen);
+        cola.offer(origen);
+
+        while (!cola.isEmpty()) {
+            String actual = cola.poll();
+
+            if (actual.equals(destino)) break;
+
+            for (String vecino : adyacencia.get(actual)) {
+                if (visitados.add(vecino)) {
+                    anterior.put(vecino, actual);
+                    cola.offer(vecino);
+                }
+            }
+        }
+
+        if (!visitados.contains(destino)) {
+            return List.of();
+        }
+
+        List<String> ruta = new ArrayList<>();
+
+        for (String actual = destino; actual != null; actual = anterior.get(actual)) {
+            ruta.add(actual);
+        }
+
+        Collections.reverse(ruta);
+        return ruta;
+    }
+
+    public List<List<String>> componentesConexas() {
+        Set<String> visitados = new HashSet<>();
+        List<List<String>> componentes = new ArrayList<>();
+
+        for (String inicio : adyacencia.keySet()) {
+            if (visitados.contains(inicio)) continue;
+
+            List<String> componente = new ArrayList<>();
+            Queue<String> cola = new ArrayDeque<>();
+
+            visitados.add(inicio);
+            cola.offer(inicio);
+
+            while (!cola.isEmpty()) {
+                String actual = cola.poll();
+                componente.add(actual);
+
+                for (String vecino : adyacencia.get(actual)) {
+                    if (visitados.add(vecino)) {
+                        cola.offer(vecino);
+                    }
+                }
+            }
+
+            componentes.add(componente);
+        }
+
+        return componentes;
     }
 
     public void dfsRecursivo(String inicio) {
@@ -552,6 +1167,181 @@ public class Grafo {
         System.out.println();
     }
 
+    public void dfsIterativoMarcandoAlApilar(String inicio) {
+        validarVertice(inicio);
+
+        Set<String> visitados = new HashSet<>();
+        Deque<String> pila = new ArrayDeque<>();
+
+        visitados.add(inicio);
+        pila.push(inicio);
+
+        while (!pila.isEmpty()) {
+            String actual = pila.pop();
+            System.out.print(actual + " ");
+
+            List<String> vecinos = adyacencia.get(actual);
+
+            for (int i = vecinos.size() - 1; i >= 0; i--) {
+                String vecino = vecinos.get(i);
+
+                if (visitados.add(vecino)) {
+                    pila.push(vecino);
+                }
+            }
+        }
+
+        System.out.println();
+    }
+
+    private static class MarcoDfs {
+        String vertice;
+        int siguienteVecino;
+
+        MarcoDfs(String vertice) {
+            this.vertice = vertice;
+        }
+    }
+
+    public void dfsIterativoExacto(String inicio) {
+        validarVertice(inicio);
+
+        Set<String> visitados = new HashSet<>();
+        Deque<MarcoDfs> pila = new ArrayDeque<>();
+
+        visitados.add(inicio);
+        System.out.print(inicio + " ");
+        pila.push(new MarcoDfs(inicio));
+
+        while (!pila.isEmpty()) {
+            MarcoDfs marco = pila.peek();
+            List<String> vecinos = adyacencia.get(marco.vertice);
+
+            if (marco.siguienteVecino == vecinos.size()) {
+                pila.pop();
+                continue;
+            }
+
+            String vecino = vecinos.get(marco.siguienteVecino);
+            marco.siguienteVecino++;
+
+            if (visitados.add(vecino)) {
+                System.out.print(vecino + " ");
+                pila.push(new MarcoDfs(vecino));
+            }
+        }
+
+        System.out.println();
+    }
+
+    public List<String> buscarCaminoDfs(String origen, String destino) {
+        validarVertice(origen);
+        validarVertice(destino);
+
+        Set<String> visitados = new HashSet<>();
+        Map<String, String> anterior = new HashMap<>();
+
+        boolean encontrado = buscarCaminoDfs(origen, destino, visitados, anterior);
+
+        if (!encontrado) return List.of();
+
+        List<String> ruta = new ArrayList<>();
+
+        for (String actual = destino; actual != null; actual = anterior.get(actual)) {
+            ruta.add(actual);
+        }
+
+        Collections.reverse(ruta);
+        return ruta;
+    }
+
+    private boolean buscarCaminoDfs(String actual, String destino, Set<String> visitados, Map<String, String> anterior) {
+        visitados.add(actual);
+
+        if (actual.equals(destino)) return true;
+
+        for (String vecino : adyacencia.get(actual)) {
+            if (!visitados.contains(vecino)) {
+                anterior.put(vecino, actual);
+
+                if (buscarCaminoDfs(vecino, destino, visitados, anterior)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public boolean tieneCicloNoDirigido() {
+        Set<String> visitados = new HashSet<>();
+
+        for (String inicio : adyacencia.keySet()) {
+            if (!visitados.contains(inicio) && tieneCicloNoDirigido(inicio, null, visitados)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean tieneCicloNoDirigido(String actual, String padre, Set<String> visitados) {
+        visitados.add(actual);
+
+        for (String vecino : adyacencia.get(actual)) {
+            if (!visitados.contains(vecino)) {
+                if (tieneCicloNoDirigido(vecino, actual, visitados)) {
+                    return true;
+                }
+            } else if (!vecino.equals(padre)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private enum Estado {
+        NO_VISITADO,
+        EN_PROCESO,
+        FINALIZADO
+    }
+
+    public boolean tieneCicloDirigido() {
+        Map<String, Estado> estados = new HashMap<>();
+
+        for (String vertice : adyacencia.keySet()) {
+            estados.put(vertice, Estado.NO_VISITADO);
+        }
+
+        for (String vertice : adyacencia.keySet()) {
+            if (estados.get(vertice) == Estado.NO_VISITADO && tieneCicloDirigido(vertice, estados)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean tieneCicloDirigido(String actual, Map<String, Estado> estados) {
+        estados.put(actual, Estado.EN_PROCESO);
+
+        for (String vecino : adyacencia.get(actual)) {
+            Estado estadoVecino = estados.get(vecino);
+
+            if (estadoVecino == Estado.EN_PROCESO) {
+                return true;
+            }
+
+            if (estadoVecino == Estado.NO_VISITADO && tieneCicloDirigido(vecino, estados)) {
+                return true;
+            }
+        }
+
+        estados.put(actual, Estado.FINALIZADO);
+        return false;
+    }
+
     private void validarVertice(String vertice) {
         if (!adyacencia.containsKey(vertice)) {
             throw new IllegalArgumentException("El vértice '" + vertice + "' no existe.");
@@ -576,33 +1366,107 @@ public class Grafo {
         System.out.println("DFS recursivo desde A:");
         grafo.dfsRecursivo("A");
 
-        System.out.println("DFS iterativo desde A:");
+        System.out.println("DFS iterativo (marca al extraer) desde A:");
         grafo.dfsIterativo("A");
+
+        System.out.println("DFS iterativo (marca al apilar) desde A:");
+        grafo.dfsIterativoMarcandoAlApilar("A");
+
+        System.out.println("DFS iterativo (marcos exactos) desde A:");
+        grafo.dfsIterativoExacto("A");
+
+        System.out.println("\nCamino mínimo BFS de A a E: " + grafo.caminoMinimoBfs("A", "E"));
+        System.out.println("Camino DFS de A a E: " + grafo.buscarCaminoDfs("A", "E"));
+
+        System.out.println("\n¿Tiene ciclo no dirigido? " + grafo.tieneCicloNoDirigido());
+
+        grafo.agregarArista("F", "G");
+        System.out.println("\nComponentes conexas (con F-G agregado): " + grafo.componentesConexas());
+
+        Grafo dirigidoConCiclo = new Grafo();
+        dirigidoConCiclo.agregarAristaDirigida("X", "Y");
+        dirigidoConCiclo.agregarAristaDirigida("Y", "Z");
+        dirigidoConCiclo.agregarAristaDirigida("Z", "X");
+        System.out.println("¿X->Y->Z->X tiene ciclo dirigido? " + dirigidoConCiclo.tieneCicloDirigido());
     }
 }
 ```
 
+Salida real al ejecutar `main`:
+
+```text
+Lista de adyacencia:
+A -> [B, C]
+B -> [A, D]
+C -> [A, D, E]
+D -> [B, C]
+E -> [C]
+
+BFS desde A:
+A B C D E
+
+DFS recursivo desde A:
+A B D C E
+DFS iterativo (marca al extraer) desde A:
+A B D C E
+DFS iterativo (marca al apilar) desde A:
+A B D C E
+DFS iterativo (marcos exactos) desde A:
+A B D C E
+
+Camino mínimo BFS de A a E: [A, C, E]
+Camino DFS de A a E: [A, B, D, C, E]
+
+¿Tiene ciclo no dirigido? true
+
+Componentes conexas (con F-G agregado): [[A, B, C, D, E], [F, G]]
+¿X->Y->Z->X tiene ciclo dirigido? true
+```
+
+`imprimir()` y `componentesConexas()` iteran sobre `adyacencia.keySet()`, y `HashMap` no garantiza orden — como se explicó en "Orden reproducible". El orden mostrado arriba es el que produjo esta ejecución concreta; con otra JVM u otro conjunto de claves, el orden entre líneas o entre componentes podría variar, aunque el contenido de cada línea o componente no cambia.
+
 ## BFS vs. DFS
 
-| Característica | BFS | DFS |
+| Criterio | BFS | DFS |
 |---|---|---|
-| Estrategia | Por niveles | Por profundidad |
-| Estructura principal | Cola | Pila o recursividad |
-| Java recomendado | `Queue` + `ArrayDeque` | `Deque` + `ArrayDeque` |
+| Estrategia | Nivel por nivel | Rama completa antes de retroceder |
+| Estructura | Cola FIFO | Pila LIFO o recursividad |
+| Java recomendado | `Queue` + `ArrayDeque` | `Deque` + `ArrayDeque` o pila de llamadas |
 | Camino mínimo sin pesos | Sí | No necesariamente |
-| Exploración de ramas | Gradual, capa por capa | Completa antes de retroceder |
+| Encontrar cualquier camino | Sí | Sí |
+| Distancia por cantidad de aristas | Natural | No es su objetivo |
+| Detección de ciclos | Posible | Especialmente natural |
+| Ordenamiento topológico | No es la estrategia habitual | Sí, en grafos dirigidos acíclicos |
+| Memoria dominante | Frontera del nivel actual | Profundidad o pila pendiente |
+| Forma natural | Iterativa | Recursiva o iterativa |
 
-Ninguno es "mejor" de forma general: la elección depende del problema.
+Ninguno es "mejor" de forma general: la elección depende de la pregunta que se quiere responder, no de cuál algoritmo parezca más rápido en un ejemplo particular.
+
+### ¿Cuál consume más memoria?
+
+No existe una respuesta única:
+
+- BFS puede consumir mucha memoria cuando un nivel contiene numerosos vértices (la cola crece con toda la frontera).
+- DFS puede consumir mucha memoria cuando el grafo contiene un camino muy profundo (la pila crece con la profundidad).
+- Ambos tienen un límite asintótico de `O(V)` para sus estructuras auxiliares — la diferencia está en qué forma del grafo hace que ese límite se alcance.
 
 ## Complejidad de los recorridos
 
-Con `V` vértices y `A` aristas, usando lista de adyacencia, tanto BFS como DFS cuestan:
+Con `V` vértices y `A` aristas — usando la notación en español de esta página; en bibliografía inglesa suele escribirse `E`, de *edges* — y lista de adyacencia, tanto BFS como DFS cuestan:
 
 ```text
 O(V + A)
 ```
 
-Cada vértice y cada arista se examinan como máximo una cantidad constante de veces durante el recorrido.
+Cada vértice y cada arista se examinan como máximo una cantidad constante de veces durante el recorrido. Decir solamente "`O(n)`" es ambiguo en grafos: siempre conviene distinguir cuántos vértices y cuántas aristas se examinan.
+
+Con **matriz de adyacencia**, en cambio, examinar todos los vecinos posibles de cada vértice cuesta:
+
+```text
+O(V²)
+```
+
+porque para cada vértice se recorre una fila completa de tamaño `V`, exista o no la arista.
 
 ## Recorrer no es lo mismo que encontrar el camino más corto
 
@@ -631,6 +1495,27 @@ La pregunta ya no es solo *¿puedo llegar?* — eso ya lo responden BFS y DFS. A
 
 Dijkstra calcula las distancias mínimas desde un vértice origen hacia los demás vértices de un grafo ponderado, siempre que los pesos de las aristas sean **no negativos**. No es "otro BFS/DFS": es un algoritmo de camino mínimo, y resuelve una pregunta distinta.
 
+### ¿Cuándo usarlo y cuándo no?
+
+Usa Dijkstra cuando:
+
+- Existe un único origen.
+- Las aristas representan costos acumulables, como distancia, tiempo o latencia.
+- Todos los pesos son mayores o iguales a cero.
+- Se necesita la ruta óptima, no solamente recorrer el grafo.
+
+No lo uses cuando existen pesos negativos. Para ese caso se usa Bellman–Ford, más adelante en esta lección.
+
+### Aplicaciones reales
+
+- Protocolos de estado de enlace: **OSPF calcula un árbol de caminos mínimos mediante el algoritmo de Dijkstra** (documentado en el RFC 2328).
+- Navegación cuando los costos son no negativos: distancia, duración estimada o peaje.
+- Enrutamiento dentro de redes modeladas mediante costos de enlace.
+- Selección de una secuencia de servicios o dependencias con costo acumulado no negativo.
+- Videojuegos y robótica, para encontrar rutas en mapas ponderados.
+
+> Es correcto usar AWS como ejemplo de un entorno con grafos de redes, rutas, latencias y conexiones. Pero no debe afirmarse que una VPC ejecuta Dijkstra: la documentación pública de Amazon VPC explica que sus tablas de rutas seleccionan la coincidencia de prefijo más larga, no un cálculo de camino mínimo tipo Dijkstra. Amazon Location Service sí ofrece cálculo de rutas y tiempos estimados, pero su documentación pública no identifica el algoritmo interno exacto.
+
 ### Idea principal
 
 Inicialmente:
@@ -648,7 +1533,52 @@ Desde `A` descubrimos `B = 4` y `C = 2`. Como `2` es la menor distancia pendient
 
 ### Relajación
 
-Si conocemos `distancia(A -> B) = 4` y existe la arista `B -> D` con peso `5`, encontramos una posible distancia `A -> B -> D = 4 + 5 = 9`. Si `9` mejora la distancia anteriormente conocida hacia `D` (`∞`), se actualiza. A esa actualización se le llama **relajar** una arista.
+Si conocemos `distancia(A -> B) = 4` y existe la arista `B -> D` con peso `5`, encontramos una posible distancia `A -> B -> D = 4 + 5 = 9`. Si `9` mejora la distancia anteriormente conocida hacia `D` (`∞`), se actualiza. A esa actualización se le llama **relajar** una arista:
+
+```text
+si distancia[u] + peso(u, v) < distancia[v]:
+    distancia[v] = distancia[u] + peso(u, v)
+    anterior[v] = u
+```
+
+El mapa `anterior` es lo que nos permitirá reconstruir la ruta completa al finalizar, no solo su costo.
+
+### Pseudocódigo
+
+```text
+DIJKSTRA(grafo, origen):
+    para cada vértice v del grafo:
+        distancia[v] = infinito
+        anterior[v] = nulo
+
+    distancia[origen] = 0
+    pendientes = cola de prioridad ordenada por distancia
+    insertar (origen, 0) en pendientes
+
+    mientras pendientes no esté vacía:
+        (u, costoExtraído) = extraer el elemento de menor costo
+
+        si costoExtraído es mayor que distancia[u]:
+            continuar  // entrada obsoleta
+
+        para cada arista (u, v, peso):
+            propuesta = distancia[u] + peso
+
+            si propuesta < distancia[v]:
+                distancia[v] = propuesta
+                anterior[v] = u
+                insertar (v, propuesta) en pendientes
+
+    devolver distancia y anterior
+```
+
+Cinco ideas resumen la lógica:
+
+1. Todas las distancias comienzan en infinito, excepto el origen en `0`.
+2. La cola de prioridad entrega siempre la mejor opción pendiente.
+3. Al procesar `u`, se intenta mejorar cada vecino mediante relajación.
+4. Cuando una distancia mejora, se guarda `u` como predecesor de ese vecino.
+5. La implementación puede dejar entradas antiguas dentro de la cola; por eso descarta una entrada cuando su costo es mayor que la distancia vigente.
 
 ### Representar pesos en Java
 
@@ -720,7 +1650,21 @@ PriorityQueue
 
 Dijkstra siempre procesa primero la mejor distancia pendiente conocida — por eso `C` sale antes que `B`, aunque `B` se haya descubierto primero.
 
-### Dijkstra en Java
+### Ejecución paso a paso
+
+Sobre el mismo grafo (`A-B:4`, `A-C:2`, `B-D:5`, `C-D:8`):
+
+| Paso | Vértice procesado | Relajaciones | Distancias `A, B, C, D` |
+|---|---|---|---|
+| Inicial | — | — | `0, ∞, ∞, ∞` |
+| 1 | `A` | `B=4`, `C=2` | `0, 4, 2, ∞` |
+| 2 | `C` | `D=10` | `0, 4, 2, 10` |
+| 3 | `B` | `D` mejora de `10` a `9` | `0, 4, 2, 9` |
+| 4 | `D` | No hay mejoras | `0, 4, 2, 9` |
+
+La ruta mínima de `A` a `D` es `A -> B -> D`, con costo `9`. Procesar `C` antes que `B` no obliga a conservar la primera ruta encontrada hacia `D`: la relajación posterior, al procesar `B`, la mejora de `10` a `9`.
+
+### Dijkstra en Java, con reconstrucción de ruta
 
 ```java
 public Map<String, Integer> dijkstra(String inicio) {
@@ -728,7 +1672,8 @@ public Map<String, Integer> dijkstra(String inicio) {
         throw new IllegalArgumentException("El vértice '" + inicio + "' no existe.");
     }
 
-    Map<String, Integer> distancias = new HashMap<>();
+    distancias = new HashMap<>();
+    anterior = new HashMap<>();
 
     PriorityQueue<NodoDistancia> cola =
         new PriorityQueue<>(Comparator.comparingInt(nodo -> nodo.distancia));
@@ -752,6 +1697,7 @@ public Map<String, Integer> dijkstra(String inicio) {
 
             if (nuevaDistancia < distancias.get(arista.destino)) {
                 distancias.put(arista.destino, nuevaDistancia);
+                anterior.put(arista.destino, actual.vertice);
                 cola.offer(new NodoDistancia(arista.destino, nuevaDistancia));
             }
         }
@@ -759,32 +1705,48 @@ public Map<String, Integer> dijkstra(String inicio) {
 
     return distancias;
 }
+
+public List<String> reconstruirRuta(String destino) {
+    if (distancias == null) {
+        throw new IllegalStateException("Ejecuta dijkstra(origen) antes de reconstruir una ruta.");
+    }
+
+    if (!distancias.containsKey(destino) || distancias.get(destino) == Integer.MAX_VALUE) {
+        return List.of();
+    }
+
+    List<String> ruta = new ArrayList<>();
+
+    for (String actual = destino; actual != null; actual = anterior.get(actual)) {
+        ruta.add(actual);
+    }
+
+    Collections.reverse(ruta);
+    return ruta;
+}
 ```
 
-Cuatro pasos resumen la lógica:
+`distancias` y `anterior` pasan a ser campos de la clase (en vez de variables locales) para que `reconstruirRuta` pueda consultarlos después de que `dijkstra` termine. El `if (actual.distancia > distancias.get(actual.vertice)) continue;` sigue descartando entradas obsoletas: como no eliminamos las entradas antiguas de la cola al mejorar una distancia, puede quedar más de una entrada para el mismo vértice, y solo la más reciente es válida.
 
-```text
-1. Inicializar todas las distancias en infinito, excepto el origen en 0.
-2. Sacar de la PriorityQueue la mejor opción pendiente.
-3. Examinar sus aristas.
-4. Actualizar (relajar) una distancia cuando encontramos una ruta mejor.
-```
-
-El `if (actual.distancia > distancias.get(actual.vertice)) continue;` descarta entradas obsoletas: como no eliminamos las entradas antiguas de la cola al mejorar una distancia, puede quedar más de una entrada para el mismo vértice, y solo la más reciente es válida.
-
-Ejecutando `dijkstra("A")` sobre el grafo de esta sección se obtiene:
+Ejecutando `dijkstra("A")` sobre el grafo de esta sección:
 
 ```text
 A = 0
 B = 4
 C = 2
-D = 9  (vía A -> B -> D, no vía A -> C -> D)
+D = 9
+
+reconstruirRuta("D") = [A, B, D]
+reconstruirRuta("C") = [A, C]
 ```
 
 ### Código completo: GrafoPonderado.java
 
+Compilado y ejecutado para verificar cada resultado mostrado en esta sección:
+
 ```java
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -814,6 +1776,8 @@ public class GrafoPonderado {
     }
 
     private final Map<String, List<Arista>> adyacencia;
+    private Map<String, Integer> distancias;
+    private Map<String, String> anterior;
 
     public GrafoPonderado() {
         adyacencia = new HashMap<>();
@@ -840,7 +1804,8 @@ public class GrafoPonderado {
             throw new IllegalArgumentException("El vértice '" + inicio + "' no existe.");
         }
 
-        Map<String, Integer> distancias = new HashMap<>();
+        distancias = new HashMap<>();
+        anterior = new HashMap<>();
 
         PriorityQueue<NodoDistancia> cola =
             new PriorityQueue<>(Comparator.comparingInt(nodo -> nodo.distancia));
@@ -864,12 +1829,32 @@ public class GrafoPonderado {
 
                 if (nuevaDistancia < distancias.get(arista.destino)) {
                     distancias.put(arista.destino, nuevaDistancia);
+                    anterior.put(arista.destino, actual.vertice);
                     cola.offer(new NodoDistancia(arista.destino, nuevaDistancia));
                 }
             }
         }
 
         return distancias;
+    }
+
+    public List<String> reconstruirRuta(String destino) {
+        if (distancias == null) {
+            throw new IllegalStateException("Ejecuta dijkstra(origen) antes de reconstruir una ruta.");
+        }
+
+        if (!distancias.containsKey(destino) || distancias.get(destino) == Integer.MAX_VALUE) {
+            return List.of();
+        }
+
+        List<String> ruta = new ArrayList<>();
+
+        for (String actual = destino; actual != null; actual = anterior.get(actual)) {
+            ruta.add(actual);
+        }
+
+        Collections.reverse(ruta);
+        return ruta;
     }
 
     public static void main(String[] args) {
@@ -887,21 +1872,41 @@ public class GrafoPonderado {
         for (Map.Entry<String, Integer> entrada : distancias.entrySet()) {
             System.out.println(entrada.getKey() + " = " + entrada.getValue());
         }
+
+        System.out.println("Ruta A -> D: " + grafo.reconstruirRuta("D"));
+        System.out.println("Ruta A -> C: " + grafo.reconstruirRuta("C"));
     }
 }
 ```
 
-Este ejemplo calcula distancias mínimas, no la ruta exacta. Si se necesitara reconstruir el camino completo (no solo su costo), se agregaría un mapa de predecesores (`Map<String, String> anterior`) que registre desde qué vértice se relajó cada distancia — no es necesario para esta introducción.
+Salida real:
+
+```text
+Distancias mínimas desde A:
+A = 0
+B = 4
+C = 2
+D = 9
+Ruta A -> D: [A, B, D]
+Ruta A -> C: [A, C]
+```
+
+`distancias` y `anterior` quedan como campos de la instancia únicamente por simplicidad pedagógica: exige llamar a `dijkstra(origen)` antes de `reconstruirRuta(destino)`, y una segunda llamada a `dijkstra` con otro origen sobrescribe el resultado anterior. Es una limitación razonable para esta introducción; una versión de producción probablemente devolvería ambos mapas juntos en un objeto de resultado en lugar de guardarlos como estado mutable.
+
+### ¿Por qué su implementación natural es iterativa?
+
+La forma natural de Dijkstra es **iterativa**: el algoritmo repite extracciones de una cola de prioridad cuyo estado cambia dinámicamente en cada iteración. Una versión recursiva solo ocultaría el mismo ciclo `while` dentro de llamadas recursivas, consumiría pila adicional y no simplificaría el razonamiento.
 
 ## Complejidad de Dijkstra
 
-Con lista de adyacencia y `PriorityQueue`, como referencia:
+Con lista de adyacencia y cola de prioridad binaria:
 
-```text
-O((V + A) log V)
-```
+- Tiempo: `O((V + A) log V)`, normalmente escrito `O(A log V)` en un grafo conexo.
+- Memoria: `O(V + A)`, para el grafo, las distancias, los predecesores y la cola.
 
-Dijkstra **no debe usarse directamente si existen aristas con peso negativo**: en ese caso, un vértice ya procesado podría, en teoría, mejorar su distancia más adelante, y el algoritmo no lo contempla.
+Con matriz de adyacencia y búsqueda lineal del siguiente vértice, una implementación clásica cuesta `O(V²)`.
+
+Dijkstra **no debe usarse directamente si existen aristas con peso negativo**: en ese caso, un vértice ya procesado podría, en teoría, mejorar su distancia más adelante, y el algoritmo no lo contempla — por eso `agregarArista` de `GrafoPonderado` rechaza pesos negativos desde el momento en que se construye el grafo.
 
 ## BFS, DFS y Dijkstra no resuelven lo mismo
 
@@ -922,16 +1927,837 @@ CAMINOS MÍNIMOS
 
 El grafo es la estructura. Los algoritmos son herramientas distintas que responden preguntas distintas sobre esa estructura.
 
-## Otros algoritmos sobre grafos
+## Bellman–Ford: pesos negativos y detección de ciclos
 
-| Algoritmo | Qué resuelve | Cuándo usarlo |
+### ¿Qué resuelve?
+
+Bellman–Ford calcula caminos mínimos desde un origen y, a diferencia de Dijkstra, **admite aristas con peso negativo**. Además, puede detectar un ciclo de peso negativo alcanzable desde el origen.
+
+Un ciclo negativo permite reducir el costo indefinidamente al recorrerlo repetidas veces. En ese caso no existe una distancia mínima finita para los vértices afectados por ese ciclo.
+
+### ¿Cómo funciona?
+
+Un camino simple (sin repetir vértices) puede contener como máximo `V - 1` aristas. Por eso el algoritmo relaja **todas** las aristas hasta `V - 1` veces. Si después de esas pasadas todavía es posible mejorar alguna distancia, existe un ciclo negativo alcanzable desde el origen.
+
+### Aplicaciones reales
+
+- Protocolos de vector de distancia: **RIP está basado en Bellman–Ford o vector de distancia** (RFC 2453).
+- Redes distribuidas donde cada router aprende costos comunicándose con sus vecinos.
+- Detección de oportunidades teóricas de arbitraje, transformando tasas de cambio mediante logaritmos: un ciclo negativo representa una multiplicación favorable.
+- Modelos con créditos, descuentos o ganancias representados mediante pesos negativos.
+- Verificación de restricciones expresables como diferencias entre variables.
+
+### Pseudocódigo
+
+```text
+BELLMAN_FORD(vértices, aristas, origen):
+    para cada vértice v:
+        distancia[v] = infinito
+        anterior[v] = nulo
+
+    distancia[origen] = 0
+
+    repetir V - 1 veces:
+        huboCambio = falso
+
+        para cada arista (u, v, peso):
+            si distancia[u] no es infinito
+               y distancia[u] + peso < distancia[v]:
+                distancia[v] = distancia[u] + peso
+                anterior[v] = u
+                huboCambio = verdadero
+
+        si no huboCambio:
+            terminar anticipadamente
+
+    para cada arista (u, v, peso):
+        si distancia[u] no es infinito
+           y distancia[u] + peso < distancia[v]:
+            informar ciclo negativo alcanzable
+
+    devolver distancia y anterior
+```
+
+La última pasada extra —fuera del ciclo de `V - 1` repeticiones— es la comprobación de ciclo negativo: si todavía es posible relajar alguna arista después de agotar las `V - 1` pasadas necesarias para cualquier camino simple, esa mejora solo puede venir de un ciclo negativo.
+
+### Ejecución paso a paso
+
+Usaremos un grafo dirigido nuevo, distinto al de la introducción, porque Bellman–Ford necesita una arista negativa para justificar su uso:
+
+```text
+S ──4──▶ A ──(-2)──▶ B ──3──▶ C
+ \
+  └──5──▶ B
+
+A ──4──▶ C
+```
+
+Aristas: `S→A:4`, `S→B:5`, `A→B:-2`, `A→C:4`, `B→C:3`.
+
+| Pasada | Cambios principales | Distancias `S, A, B, C` |
 |---|---|---|
-| Floyd-Warshall | Caminos mínimos entre **todos** los pares de vértices | Grafos pequeños o densos donde se necesitan todas las distancias, no solo desde un origen |
-| Bellman-Ford | Caminos mínimos desde un origen | Grafos que pueden tener pesos negativos (algo que Dijkstra no admite) |
-| Prim | Árbol de expansión mínima (*Minimum Spanning Tree*), creciendo desde un vértice | Conectar todos los vértices con el menor costo total, en grafos densos |
-| Kruskal | Árbol de expansión mínima, agregando aristas por peso creciente | Mismo objetivo que Prim, más simple sobre grafos dispersos |
+| Inicial | Solo `S=0` | `0, ∞, ∞, ∞` |
+| 1 | `A=4`, `B=5`, luego `B` mejora a `2` (vía `A`), `C=5` | `0, 4, 2, 5` |
+| 2 | No hay mejoras | `0, 4, 2, 5` |
 
-Los materiales descargables de este tema profundizan en Dijkstra, Floyd-Warshall y árboles de expansión con ejercicios adicionales.
+Como la pasada 2 no produjo cambios, el algoritmo termina anticipadamente sin necesitar las pasadas restantes. La ruta hacia `C` es `S -> A -> B -> C`, con costo `4 + (-2) + 3 = 5`.
+
+### Java
+
+```java
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class BellmanFord {
+
+    static class Arista {
+        String origen;
+        String destino;
+        int peso;
+
+        Arista(String origen, String destino, int peso) {
+            this.origen = origen;
+            this.destino = destino;
+            this.peso = peso;
+        }
+    }
+
+    static class Resultado {
+        Map<String, Long> distancias = new HashMap<>();
+        Map<String, String> anterior = new HashMap<>();
+        boolean tieneCicloNegativo;
+
+        List<String> rutaHasta(String destino) {
+            if (tieneCicloNegativo
+                    || !distancias.containsKey(destino)
+                    || distancias.get(destino) == Long.MAX_VALUE) {
+                return List.of();
+            }
+
+            List<String> ruta = new ArrayList<>();
+            for (String actual = destino; actual != null; actual = anterior.get(actual)) {
+                ruta.add(actual);
+            }
+            Collections.reverse(ruta);
+            return ruta;
+        }
+    }
+
+    static Resultado calcular(List<String> vertices, List<Arista> aristas, String origen) {
+        Resultado resultado = new Resultado();
+
+        for (String vertice : vertices) {
+            resultado.distancias.put(vertice, Long.MAX_VALUE);
+        }
+
+        if (!resultado.distancias.containsKey(origen)) {
+            throw new IllegalArgumentException("El origen no existe");
+        }
+
+        resultado.distancias.put(origen, 0L);
+
+        for (int pasada = 1; pasada < vertices.size(); pasada++) {
+            boolean huboCambio = false;
+
+            for (Arista arista : aristas) {
+                long distanciaOrigen = resultado.distancias.get(arista.origen);
+
+                if (distanciaOrigen == Long.MAX_VALUE) continue;
+
+                long propuesta = distanciaOrigen + arista.peso;
+                long conocida = resultado.distancias.get(arista.destino);
+
+                if (propuesta < conocida) {
+                    resultado.distancias.put(arista.destino, propuesta);
+                    resultado.anterior.put(arista.destino, arista.origen);
+                    huboCambio = true;
+                }
+            }
+
+            if (!huboCambio) break;
+        }
+
+        for (Arista arista : aristas) {
+            long distanciaOrigen = resultado.distancias.get(arista.origen);
+
+            if (distanciaOrigen != Long.MAX_VALUE
+                    && distanciaOrigen + arista.peso < resultado.distancias.get(arista.destino)) {
+                resultado.tieneCicloNegativo = true;
+                break;
+            }
+        }
+
+        return resultado;
+    }
+}
+```
+
+Cada distancia se guarda en `long` y se compara contra `Long.MAX_VALUE` **antes** de sumarle un peso (`if (distanciaOrigen == Long.MAX_VALUE) continue;`). Sumar directamente sobre `Long.MAX_VALUE` desbordaría el tipo y produciría un número negativo incorrecto — por eso siempre se verifica primero que la distancia sea finita.
+
+Ejecutando `calcular` sobre el grafo de esta sección, la salida real es:
+
+```text
+Distancias: {A=4, B=2, S=0, C=5}
+¿Ciclo negativo? false
+Ruta S -> C: [S, A, B, C]
+```
+
+(El orden de las claves en la salida depende de `HashMap` y no es relevante; los valores sí lo son.)
+
+### Detectando un ciclo negativo
+
+Si agregamos la arista `C→A:-6` al mismo grafo, se cierra el ciclo `A -> B -> C -> A` con peso `-2 + 3 + (-6) = -5`, un ciclo negativo. Ejecutando `calcular` de nuevo:
+
+```text
+¿Ciclo negativo? true
+```
+
+`resultado.tieneCicloNegativo` pasa a `true`, y por diseño `rutaHasta(...)` devuelve una lista vacía para cualquier destino: cuando existe un ciclo negativo alcanzable, no existe una distancia mínima finita bien definida para los vértices afectados.
+
+### ¿Iterativo o recursivo?
+
+La forma natural es **iterativa**, porque el algoritmo realiza pasadas sucesivas sobre una colección de aristas. Convertir las pasadas en recursión no reduce la complejidad y añade consumo de pila. La idea matemática puede describirse de forma recursiva, pero la implementación práctica en Java debe usar ciclos.
+
+### Complejidad
+
+- Tiempo: `O(V·A)`.
+- Memoria adicional: `O(V)`, para distancias y predecesores.
+
+Bellman–Ford es más lento que Dijkstra, pero resuelve un problema más general: admite pesos negativos y detecta ciclos negativos, algo que Dijkstra no contempla.
+
+## Floyd–Warshall: caminos mínimos entre todos los pares
+
+### ¿Qué resuelve?
+
+Floyd–Warshall calcula la distancia mínima entre **cada par** de vértices, no solo desde un origen. Admite pesos negativos, siempre que no existan ciclos negativos cuando se esperan distancias mínimas bien definidas.
+
+Es especialmente apropiado cuando:
+
+- El grafo es pequeño o mediano.
+- El grafo es denso.
+- Se necesitan muchas consultas entre pares distintos.
+- Una matriz de distancias completa cabe en memoria.
+
+### Idea de programación dinámica
+
+El algoritmo considera progresivamente qué vértices pueden usarse como intermediarios. Para cada triple `i, k, j`, pregunta:
+
+```text
+¿Es mejor ir directamente de i a j,
+o ir de i a k y luego de k a j?
+```
+
+La transición es:
+
+```text
+dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j])
+```
+
+### Aplicaciones reales
+
+- Precalcular una matriz de tiempos o latencias entre todos los sitios de una red pequeña.
+- Planificación de rutas entre todas las sucursales de una empresa.
+- Análisis de accesibilidad y costos dentro de mapas pequeños o mundos de videojuegos.
+- Cierre transitivo y análisis de dependencias, reemplazando pesos por valores booleanos.
+- Detectar ciclos negativos: al finalizar, `dist[i][i] < 0` indica uno.
+
+### Pseudocódigo
+
+```text
+FLOYD_WARSHALL(matrizPesos):
+    dist = copia de matrizPesos
+
+    para cada vértice i:
+        dist[i][i] = 0
+
+    para cada vértice intermedio k:
+        para cada origen i:
+            para cada destino j:
+                si dist[i][k] y dist[k][j] son finitas:
+                    alternativa = dist[i][k] + dist[k][j]
+                    dist[i][j] = min(dist[i][j], alternativa)
+
+    devolver dist
+```
+
+El orden de los ciclos es esencial: **`k` debe ser el ciclo exterior**, porque cada etapa `k` solo debe usar los intermediarios ya habilitados hasta ese momento (`0` hasta `k`). Intercambiar el orden de los ciclos produce resultados incorrectos.
+
+### Ejecución paso a paso
+
+Grafo dirigido con tres vértices:
+
+```text
+A ──3──▶ B ──1──▶ C
+A ──10────────────▶ C
+C ──2──▶ A
+```
+
+Matriz inicial:
+
+```text
+      A   B   C
+A     0   3  10
+B     ∞   0   1
+C     2   ∞   0
+```
+
+El algoritmo habilita los vértices como intermediarios en orden — primero `A` (`k=0`), luego `B` (`k=1`), luego `C` (`k=2`) — y cada paso solo puede usar los intermediarios ya habilitados hasta ese momento:
+
+Al habilitar `A` como intermediario:
+
+```text
+C → B mejora de ∞ a dist[C][A] + dist[A][B] = 2 + 3 = 5
+```
+
+(`C → A → B` es la única ruta que pasa por `A`, entre las que aún no tenían una mejor opción.)
+
+Al habilitar `B` como intermediario:
+
+```text
+A → C mejora de 10 a dist[A][B] + dist[B][C] = 3 + 1 = 4
+```
+
+Al habilitar `C` como intermediario:
+
+```text
+B → A mejora de ∞ a dist[B][C] + dist[C][A] = 1 + 2 = 3
+```
+
+Matriz final:
+
+```text
+      A   B   C
+A     0   3   4
+B     3   0   1
+C     2   5   0
+```
+
+La ruta `A -> C` pasa ahora por `B`: `A -> B -> C`.
+
+### Java con reconstrucción de caminos
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+public class FloydWarshall {
+
+    static final long INF = Long.MAX_VALUE / 4;
+
+    static class Resultado {
+        long[][] distancias;
+        int[][] siguiente;
+
+        Resultado(long[][] distancias, int[][] siguiente) {
+            this.distancias = distancias;
+            this.siguiente = siguiente;
+        }
+
+        List<Integer> ruta(int origen, int destino) {
+            if (siguiente[origen][destino] == -1) {
+                return List.of();
+            }
+
+            List<Integer> ruta = new ArrayList<>();
+            ruta.add(origen);
+
+            while (origen != destino) {
+                origen = siguiente[origen][destino];
+                ruta.add(origen);
+            }
+            return ruta;
+        }
+
+        boolean tieneCicloNegativo() {
+            for (int i = 0; i < distancias.length; i++) {
+                if (distancias[i][i] < 0) return true;
+            }
+            return false;
+        }
+    }
+
+    static Resultado calcular(long[][] pesos) {
+        int n = pesos.length;
+        long[][] dist = new long[n][n];
+        int[][] siguiente = new int[n][n];
+
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                dist[i][j] = pesos[i][j];
+                siguiente[i][j] = pesos[i][j] < INF ? j : -1;
+            }
+            dist[i][i] = Math.min(0, pesos[i][i]);
+            siguiente[i][i] = i;
+        }
+
+        for (int k = 0; k < n; k++) {
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j < n; j++) {
+                    if (dist[i][k] == INF || dist[k][j] == INF) {
+                        continue;
+                    }
+
+                    long alternativa = dist[i][k] + dist[k][j];
+
+                    if (alternativa < dist[i][j]) {
+                        dist[i][j] = alternativa;
+                        siguiente[i][j] = siguiente[i][k];
+                    }
+                }
+            }
+        }
+
+        return new Resultado(dist, siguiente);
+    }
+}
+```
+
+`INF` se define como `Long.MAX_VALUE / 4`, no `Long.MAX_VALUE` directamente: así, sumar dos valores "infinitos" (`dist[i][k] + dist[k][j]`) nunca desborda el tipo `long`. Aun así, el código evita esa suma innecesaria comprobando primero `if (dist[i][k] == INF || dist[k][j] == INF) continue;`.
+
+A diferencia de `Grafo` y `GrafoPonderado`, esta clase trabaja con **índices enteros** (`0`, `1`, `2`, ...) en vez de nombres de vértice, porque una matriz de `long[][]` necesita posiciones numéricas. La correspondencia para el grafo de esta sección es `0 = A`, `1 = B`, `2 = C`.
+
+Ejecutando `calcular` sobre la matriz de esta sección, la salida real coincide exactamente con la matriz final mostrada arriba, y `resultado.ruta(0, 2)` devuelve `[0, 1, 2]` — la ruta `A -> B -> C` expresada como índices.
+
+### ¿Iterativo o recursivo?
+
+La recurrencia matemática es natural:
+
+```text
+D(i, j, k) = mínimo entre:
+             D(i, j, k - 1)
+             D(i, k, k - 1) + D(k, j, k - 1)
+```
+
+Sin memoización, implementarla literalmente repite subproblemas y resulta muy ineficiente. La versión natural en producción es la **iterativa de programación dinámica**, con tres ciclos anidados. Una versión recursiva con memoización es útil para explicar la recurrencia, pero consume más memoria administrativa y no mejora la complejidad `O(V³)`.
+
+### Complejidad
+
+- Tiempo: `O(V³)`.
+- Memoria: `O(V²)`.
+
+Para un solo origen en un grafo grande y disperso, Dijkstra o Bellman–Ford suelen ser más adecuados: calcular *todos* los pares cuando solo interesa uno es trabajo desperdiciado.
+
+## Árboles de expansión mínima
+
+Hasta ahora, Dijkstra, Bellman–Ford y Floyd–Warshall resuelven variantes de **camino mínimo**: minimizar el costo de viajar entre uno o varios pares de vértices. Un **árbol de expansión mínima** (*Minimum Spanning Tree*, MST) es un problema distinto: conecta **todos** los vértices de un grafo no dirigido, conexo y ponderado mediante:
+
+- Exactamente `V - 1` aristas.
+- Ningún ciclo.
+- Peso total mínimo.
+
+```text
+Camino mínimo desde A hacia D:
+minimiza solo el viaje A → D
+
+Árbol de expansión mínima:
+minimiza el costo total de conectar A, B, C, D, ...
+```
+
+Un MST **no** garantiza que el camino entre dos vértices cualquiera sea el más corto del grafo original — minimiza el costo total de la red, no cada trayecto individual. Si el grafo no es conexo, Prim o Kruskal producen un **bosque de expansión mínima** si se adaptan para procesar cada componente por separado.
+
+### Aplicaciones reales
+
+- Diseñar una red inicial de fibra, cableado o tuberías minimizando longitud o costo.
+- Seleccionar enlaces básicos entre sedes o estaciones.
+- Diseñar una red eléctrica de costo mínimo antes de añadir redundancia.
+- Construir jerarquías de agrupamiento (Kruskal se relaciona con el agrupamiento jerárquico de enlace simple).
+
+> Un MST prioriza el costo total mínimo, no la tolerancia a fallos. Una red empresarial real normalmente añade enlaces redundantes; por eso el MST sirve como **línea base de diseño**, no como arquitectura final suficiente por sí sola.
+
+Usaremos un grafo nuevo para Prim y Kruskal — mismos nombres de vértice (`A, B, C, D`) que en Dijkstra, pero con aristas y pesos distintos, porque el MST necesita una arista `B-C` que el ejemplo de Dijkstra no tenía:
+
+```text
+        1
+    A ------- B
+    |       / | \
+  4 |    2/   |  \5
+    |    /     |   \
+    C ---------+---- D
+         3
+```
+
+Aristas: `A-B:1`, `A-C:4`, `B-C:2`, `B-D:5`, `C-D:3`.
+
+## Prim: hacer crecer un único árbol
+
+### ¿Qué resuelve y cómo funciona?
+
+Prim comienza en cualquier vértice y mantiene un conjunto de vértices ya conectados. En cada paso elige la arista más barata que sale del árbol actual hacia un vértice todavía no incluido.
+
+Es parecido a Dijkstra en que usa una cola de prioridad, pero la prioridad tiene otro significado:
+
+- Dijkstra prioriza la **distancia acumulada desde el origen**.
+- Prim prioriza el **peso de la arista** que incorpora un nuevo vértice, sin importar cuánto se acumuló para llegar hasta ahí.
+
+### Pseudocódigo
+
+```text
+PRIM(grafo, inicio):
+    visitados = conjunto vacío
+    candidatos = cola de prioridad por peso de arista
+    mst = lista vacía
+    costoTotal = 0
+
+    marcar inicio como visitado
+    insertar en candidatos todas las aristas que salen de inicio
+
+    mientras candidatos no esté vacía y mst tenga menos de V - 1 aristas:
+        arista = extraer la arista de menor peso
+
+        si el destino ya está visitado:
+            continuar
+
+        agregar arista al mst
+        sumar su peso al costoTotal
+        marcar el destino como visitado
+
+        insertar las aristas que salen del nuevo vértice
+        hacia destinos no visitados
+
+    si no se visitaron todos los vértices:
+        informar que el grafo no es conexo
+
+    devolver mst y costoTotal
+```
+
+### Ejecución paso a paso
+
+Comenzando en `A`:
+
+| Paso | Árbol actual | Arista elegida | Costo acumulado |
+|---|---|---|---|
+| Inicial | `{A}` | — | `0` |
+| 1 | `{A, B}` | `A-B:1` | `1` |
+| 2 | `{A, B, C}` | `B-C:2` | `3` |
+| 3 | `{A, B, C, D}` | `C-D:3` | `6` |
+
+La arista `A-C:4` se descarta porque `C` ya fue incorporado mediante una opción más barata (`B-C:2`).
+
+### Java
+
+```java
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Set;
+
+public class Prim {
+
+    static class Vecino {
+        String destino;
+        int peso;
+
+        Vecino(String destino, int peso) {
+            this.destino = destino;
+            this.peso = peso;
+        }
+    }
+
+    static class Candidata {
+        String origen;
+        String destino;
+        int peso;
+
+        Candidata(String origen, String destino, int peso) {
+            this.origen = origen;
+            this.destino = destino;
+            this.peso = peso;
+        }
+
+        public String toString() {
+            return origen + "-" + destino + ":" + peso;
+        }
+    }
+
+    static class Resultado {
+        List<Candidata> aristas = new ArrayList<>();
+        long costoTotal;
+    }
+
+    static Resultado calcular(Map<String, List<Vecino>> grafo, String inicio) {
+        if (!grafo.containsKey(inicio)) {
+            throw new IllegalArgumentException("El inicio no existe");
+        }
+
+        Resultado resultado = new Resultado();
+        Set<String> visitados = new HashSet<>();
+        PriorityQueue<Candidata> cola = new PriorityQueue<>(Comparator.comparingInt(a -> a.peso));
+
+        visitados.add(inicio);
+        agregarCandidatas(grafo, inicio, visitados, cola);
+
+        while (!cola.isEmpty() && resultado.aristas.size() < grafo.size() - 1) {
+            Candidata arista = cola.poll();
+            if (visitados.contains(arista.destino)) continue;
+
+            visitados.add(arista.destino);
+            resultado.aristas.add(arista);
+            resultado.costoTotal += arista.peso;
+
+            agregarCandidatas(grafo, arista.destino, visitados, cola);
+        }
+
+        if (visitados.size() != grafo.size()) {
+            throw new IllegalArgumentException("El grafo no es conexo");
+        }
+
+        return resultado;
+    }
+
+    private static void agregarCandidatas(
+            Map<String, List<Vecino>> grafo,
+            String origen,
+            Set<String> visitados,
+            PriorityQueue<Candidata> cola) {
+
+        for (Vecino vecino : grafo.get(origen)) {
+            if (!visitados.contains(vecino.destino)) {
+                cola.offer(new Candidata(origen, vecino.destino, vecino.peso));
+            }
+        }
+    }
+}
+```
+
+Ejecutando `calcular(grafo, "A")` sobre el grafo de esta sección, la salida real es:
+
+```text
+Aristas del MST: [A-B:1, B-C:2, C-D:3]
+Costo total: 6
+```
+
+### ¿Iterativo o recursivo?
+
+Prim es naturalmente **iterativo**: extrae candidatos de una cola de prioridad hasta incorporar `V - 1` aristas. La recursión no aporta una descomposición más clara y puede consumir pila innecesariamente.
+
+### Complejidad
+
+Con lista de adyacencia y cola de prioridad:
+
+- Tiempo: `O(A log V)`.
+- Memoria: `O(V + A)`, incluyendo la representación del grafo.
+
+Con matriz de adyacencia, una versión sencilla cuesta `O(V²)` y puede ser adecuada para grafos densos.
+
+## Kruskal: elegir aristas globalmente
+
+### ¿Qué resuelve y cómo funciona?
+
+Kruskal ordena todas las aristas por peso creciente y las considera una por una. Agrega una arista cuando conecta dos componentes diferentes; si sus extremos ya pertenecen a la misma componente, la descarta porque formaría un ciclo.
+
+Para saber si dos vértices ya están conectados, utiliza una estructura **Union–Find** (o *Disjoint Set Union*, DSU).
+
+### Pseudocódigo
+
+```text
+KRUSKAL(vértices, aristas):
+    ordenar aristas por peso creciente
+    crear un conjunto separado para cada vértice
+    mst = lista vacía
+    costoTotal = 0
+
+    para cada arista (u, v, peso) en orden:
+        si FIND(u) != FIND(v):
+            agregar la arista al mst
+            sumar peso al costoTotal
+            UNION(u, v)
+
+        si mst tiene V - 1 aristas:
+            terminar
+
+    si mst tiene menos de V - 1 aristas:
+        el grafo no es conexo
+
+    devolver mst y costoTotal
+```
+
+### Ejecución paso a paso
+
+Aristas ordenadas por peso: `A-B:1`, `B-C:2`, `C-D:3`, `A-C:4`, `B-D:5`.
+
+| Paso | Arista | Decisión | Componentes después del paso |
+|---|---|---|---|
+| 1 | `A-B:1` | Agregar | `{A,B}`, `{C}`, `{D}` |
+| 2 | `B-C:2` | Agregar | `{A,B,C}`, `{D}` |
+| 3 | `C-D:3` | Agregar | `{A,B,C,D}` |
+
+Ya existen `V - 1 = 3` aristas, así que el algoritmo termina sin siquiera examinar `A-C:4` ni `B-D:5`. Costo total: `6`.
+
+### Java con Union–Find
+
+```java
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class Kruskal {
+
+    static class Arista {
+        String origen;
+        String destino;
+        int peso;
+
+        Arista(String origen, String destino, int peso) {
+            this.origen = origen;
+            this.destino = destino;
+            this.peso = peso;
+        }
+
+        public String toString() {
+            return origen + "-" + destino + ":" + peso;
+        }
+    }
+
+    static class UnionFind {
+        private final Map<String, String> padre = new HashMap<>();
+        private final Map<String, Integer> rango = new HashMap<>();
+
+        UnionFind(List<String> vertices) {
+            for (String vertice : vertices) {
+                padre.put(vertice, vertice);
+                rango.put(vertice, 0);
+            }
+        }
+
+        String encontrar(String vertice) {
+            String padreActual = padre.get(vertice);
+
+            if (!padreActual.equals(vertice)) {
+                padre.put(vertice, encontrar(padreActual));
+            }
+            return padre.get(vertice);
+        }
+
+        boolean unir(String a, String b) {
+            String raizA = encontrar(a);
+            String raizB = encontrar(b);
+
+            if (raizA.equals(raizB)) return false;
+
+            int rangoA = rango.get(raizA);
+            int rangoB = rango.get(raizB);
+
+            if (rangoA < rangoB) {
+                padre.put(raizA, raizB);
+            } else if (rangoA > rangoB) {
+                padre.put(raizB, raizA);
+            } else {
+                padre.put(raizB, raizA);
+                rango.put(raizA, rangoA + 1);
+            }
+            return true;
+        }
+    }
+
+    static class Resultado {
+        List<Arista> aristas = new ArrayList<>();
+        long costoTotal;
+    }
+
+    static Resultado calcular(List<String> vertices, List<Arista> aristas) {
+        List<Arista> ordenadas = new ArrayList<>(aristas);
+        ordenadas.sort(Comparator.comparingInt(a -> a.peso));
+
+        UnionFind conjuntos = new UnionFind(vertices);
+        Resultado resultado = new Resultado();
+
+        for (Arista arista : ordenadas) {
+            if (conjuntos.unir(arista.origen, arista.destino)) {
+                resultado.aristas.add(arista);
+                resultado.costoTotal += arista.peso;
+            }
+
+            if (resultado.aristas.size() == vertices.size() - 1) {
+                break;
+            }
+        }
+
+        if (!vertices.isEmpty() && resultado.aristas.size() != vertices.size() - 1) {
+            throw new IllegalArgumentException("El grafo no es conexo");
+        }
+
+        return resultado;
+    }
+}
+```
+
+Ejecutando `calcular` sobre el mismo grafo, la salida real coincide con la de Prim:
+
+```text
+Aristas del MST: [A-B:1, B-C:2, C-D:3]
+Costo total: 6
+```
+
+`unir` combina **compresión de caminos** (`padre.put(vertice, encontrar(padreActual))`, que aplana el árbol de cada conjunto mientras busca la raíz) con **unión por rango** (el árbol más "bajo" se cuelga del más "alto", para evitar cadenas largas). Ambas optimizaciones son las que hacen que Union–Find sea casi constante en la práctica.
+
+### ¿Qué parte es naturalmente recursiva?
+
+El algoritmo principal de Kruskal es **iterativo**, porque recorre las aristas ya ordenadas. En cambio, `encontrar` de Union–Find sí se expresa naturalmente de forma recursiva: sigue padres hasta llegar a la raíz y, al regresar de la recursión, aplica la compresión de caminos.
+
+Una variante iterativa equivalente de `encontrar` es:
+
+```java
+String encontrarIterativo(String vertice) {
+    String raiz = vertice;
+
+    while (!padre.get(raiz).equals(raiz)) {
+        raiz = padre.get(raiz);
+    }
+
+    while (!vertice.equals(raiz)) {
+        String siguiente = padre.get(vertice);
+        padre.put(vertice, raiz);
+        vertice = siguiente;
+    }
+
+    return raiz;
+}
+```
+
+Ambas versiones son correctas y aplican compresión de caminos. La recursiva es más breve; la iterativa evita depender de la pila de llamadas, algo relevante si la cantidad de vértices es muy grande.
+
+### Complejidad
+
+- Ordenar las aristas: `O(A log A)`.
+- Operaciones de Union–Find con compresión de caminos y unión por rango: costo amortizado casi constante, `O(α(V))` por operación (`α` es la función inversa de Ackermann, que crece extremadamente lento).
+- Complejidad total: `O(A log A)`, equivalente en la práctica a `O(A log V)`.
+- Memoria adicional: `O(V + A)`, por la copia ordenada de aristas y por Union–Find.
+
+## Prim y Kruskal: ¿cuál elegir?
+
+| Aspecto | Prim | Kruskal |
+|---|---|---|
+| Estrategia | Hace crecer un árbol desde un vértice inicial | Agrega aristas globalmente por peso |
+| Estructura principal | Lista de adyacencia y cola de prioridad | Lista de aristas ordenada y Union–Find |
+| Punto de inicio | Sí, necesita uno | No |
+| Detección de ciclos | Evita destinos ya visitados | Comprueba componentes con Union–Find |
+| Grafos favorables | Conveniente en grafos densos o ya representados por lista de adyacencia | Muy natural en grafos dispersos o cuando ya existe una lista de aristas |
+| Resultado con empates | Puede producir un MST distinto | Puede producir un MST distinto |
+| Costo habitual | `O(A log V)` | `O(A log A)` |
+
+Si los pesos permiten más de un MST posible, Prim y Kruskal pueden seleccionar conjuntos de aristas diferentes y aun así llegar al mismo costo mínimo total — ninguno de los dos es "más correcto" que el otro en ese caso.
+
+### Aclaración sobre pesos negativos en MST
+
+Prim y Kruskal **sí pueden trabajar con aristas negativas**. Un peso negativo simplemente hace muy atractiva esa conexión. La restricción de pesos no negativos pertenece a Dijkstra, no a los algoritmos de árbol de expansión mínima.
+
+## Comparación general
+
+| Algoritmo | Problema | Pesos negativos | Ciclos negativos | Complejidad típica | Forma natural |
+|---|---|---|---|---|---|
+| Dijkstra | Camino mínimo desde un origen | No | No aplica | `O((V+A) log V)` | Iterativa |
+| Bellman–Ford | Camino mínimo desde un origen | Sí | Los detecta si son alcanzables | `O(V·A)` | Iterativa |
+| Floyd–Warshall | Camino mínimo entre todos los pares | Sí | Se detectan con `dist[i][i] < 0` | `O(V³)` | Iterativa con programación dinámica |
+| Prim | Árbol de expansión mínima | Los pesos pueden ser negativos | No es un problema de caminos | `O(A log V)` | Iterativa |
+| Kruskal | Árbol de expansión mínima | Los pesos pueden ser negativos | Evita ciclos mediante Union–Find | `O(A log A)` | Iterativa; `encontrar` puede ser recursivo o iterativo |
 
 ## ¿Qué algoritmo debería usar?
 
@@ -939,19 +2765,46 @@ Los materiales descargables de este tema profundizan en Dijkstra, Floyd-Warshall
 |---|---|
 | Recorrer o explorar todos los vértices alcanzables | BFS o DFS |
 | Camino más corto sin pesos (menor número de aristas) | BFS |
+| ¿Existe algún camino? ¿Hay un ciclo? ¿Puedo ordenar dependencias? | DFS |
 | Camino mínimo desde un origen, pesos no negativos | Dijkstra |
-| Camino mínimo desde un origen, con posibles pesos negativos | Bellman-Ford |
-| Camino mínimo entre todos los pares de vértices | Floyd-Warshall |
-| Conectar todos los vértices al menor costo total | Prim o Kruskal |
+| Camino mínimo desde un origen, con posibles pesos negativos | Bellman–Ford |
+| ¿Existe un ciclo de peso negativo alcanzable desde el origen? | Bellman–Ford |
+| Camino mínimo entre todos los pares de vértices | Floyd–Warshall |
+| Conectar todos los vértices al menor costo total (MST) | Prim o Kruskal |
 
 ## Errores frecuentes
 
+### Fundamentos
+
 - **"Un grafo siempre es dirigido."** Falso: puede ser dirigido o no dirigido; la elección depende de si la relación tiene sentido único.
+- **"Una lista de adyacencia siempre es mejor que una matriz."** Depende: la matriz sigue siendo conveniente en grafos densos o cuando se necesita comprobar en `O(1)` si dos vértices específicos están conectados.
+- **"La complejidad de todos los algoritmos de grafos es `O(n)`."** Debe distinguirse `V` (vértices) de `A` (aristas): por ejemplo, BFS y DFS cuestan `O(V + A)` con lista de adyacencia, y `O(V²)` con matriz.
+
+### BFS y DFS
+
+- **"BFS siempre encuentra el camino de menor costo."** Solo cuando las aristas no tienen peso o comparten el mismo costo. Con pesos distintos, BFS no lo garantiza — para eso existe Dijkstra.
+- **"DFS siempre encuentra el camino más corto."** Falso: DFS encuentra *un* camino, no necesariamente el de menor costo ni el de menos aristas.
+- **"Visitados es opcional."** En un grafo con ciclos es imprescindible para evitar repeticiones indefinidas.
+- **"En BFS puedo marcar al desencolar sin consecuencias."** Puede provocar que un mismo vértice entre varias veces en la cola.
+- **"DFS recursivo no usa pila."** Usa la pila de llamadas de Java, aunque no la administremos explícitamente.
+- **"DFS iterativo debe usar `Stack`."** En Java se recomienda `Deque` respaldada por `ArrayDeque`.
+- **"El orden del recorrido es único."** Depende del orden en que estén almacenados los vecinos de cada vértice.
+- **"Si BFS o DFS desde un vértice no visita todo, el código está mal."** El grafo puede estar desconectado, o las direcciones de un grafo dirigido pueden impedir el acceso.
+- **"Un conjunto simple de visitados detecta correctamente ciclos dirigidos."** Falso: en un grafo dirigido se necesita distinguir vértices `EN_PROCESO` de `FINALIZADO`, no solo visitado/no visitado.
+- **"Si mi recorrido visita todos los vértices, el grafo es fuertemente conexo."** Solo es válido para grafos no dirigidos. En un grafo dirigido, alcanzar todos los vértices desde un origen no garantiza poder regresar a él por el mismo camino.
+
+### Caminos mínimos y árboles de expansión mínima
+
 - **"BFS y Dijkstra resuelven el mismo problema."** Falso: solo coinciden cuando todas las aristas tienen el mismo peso. Dijkstra resuelve caminos mínimos con pesos arbitrarios (no negativos); BFS solo cuenta aristas.
 - **"Dijkstra funciona con pesos negativos."** Falso: puede dar resultados incorrectos porque asume que, una vez procesado, un vértice ya tiene su distancia final.
-- **"Una lista de adyacencia siempre es mejor que una matriz."** Depende: la matriz sigue siendo conveniente en grafos densos o cuando se necesita comprobar en `O(1)` si dos vértices específicos están conectados.
-- **"DFS siempre encuentra el camino más corto."** Falso: DFS encuentra *un* camino, no necesariamente el de menor costo ni el de menos aristas.
-- **"Si mi recorrido visita todos los vértices, el grafo es fuertemente conexo."** Solo es válido para grafos no dirigidos. En un grafo dirigido, alcanzar todos los vértices desde un origen no garantiza poder regresar a él por el mismo camino.
+- **"Dijkstra y Prim son el mismo algoritmo porque ambos usan `PriorityQueue`."** No: Dijkstra prioriza la distancia acumulada desde el origen; Prim prioriza el peso de la arista que añade un vértice nuevo al árbol.
+- **"Bellman–Ford siempre encuentra una respuesta, aunque haya un ciclo negativo."** Detecta el ciclo, pero para los vértices afectados por él no existe una distancia mínima finita.
+- **"Floyd–Warshall es mejor porque calcula todo."** Su costo `O(V³)` puede ser excesivo cuando solo interesa un origen; en ese caso, Dijkstra o Bellman–Ford son más adecuados.
+- **"El MST contiene los caminos más cortos entre todos los pares."** No necesariamente: un árbol de expansión mínima minimiza el peso total de la red, no cada trayecto individual.
+- **"Prim y Kruskal requieren pesos positivos."** Falso: ambos aceptan pesos negativos. La restricción de "no negativos" es exclusiva de Dijkstra.
+- **"Prim y Kruskal funcionan igual en un grafo dirigido."** El problema clásico de MST se define para grafos **no dirigidos**.
+- **"Kruskal debería detectar ciclos con DFS después de cada arista."** Podría hacerse, pero Union–Find con compresión de caminos es la estructura natural y eficiente para esta tarea.
+- **"AWS VPC usa Dijkstra."** La documentación pública de VPC describe tablas de rutas y coincidencia de prefijo más larga; no documenta Dijkstra como mecanismo de selección de esas rutas.
 
 ## Comprueba lo aprendido
 
@@ -959,22 +2812,50 @@ Usando el grafo de la introducción (`A-B`, `A-C`, `B-D`, `C-D`, `C-E`):
 
 1. ¿Cuál es el grado de cada vértice?
 2. Escribe el resultado de un BFS desde `A` y de un DFS (recursivo) desde `A`.
-3. ¿Cuántas componentes conexas tiene este grafo?
+3. Construye el mapa `anterior` de un BFS desde `A` y reconstruye la ruta hacia `E`. Compárala con la que encontrarías usando DFS.
+4. ¿Cuántas componentes conexas tiene este grafo? Si le agregas una arista `F-G`, separada del resto, ¿cuántas componentes hay ahora?
+5. Identifica el ciclo del grafo. Elimina la arista `C-D` y determina si el detector de ciclos no dirigidos seguiría encontrando uno.
+6. Construye un grafo dirigido pequeño con un ciclo y otro sin ciclo, y ejecuta `tieneCicloDirigido` mentalmente sobre ambos.
 
 Usando el grafo ponderado (`A-B:4`, `A-C:2`, `B-D:5`, `C-D:8`):
 
-4. Ejecuta Dijkstra desde `A` a mano, mostrando el estado de `distancias` y de la `PriorityQueue` en cada paso.
-5. ¿Por qué la ruta `A -> C -> D` no es la elegida, si `C` se procesa antes que `B`?
-6. Si la arista `C-D` cambiara de peso `8` a `2`, ¿cambiaría el resultado? ¿Por qué?
+7. Ejecuta Dijkstra desde `A` a mano, mostrando el estado de `distancias` y de la `PriorityQueue` en cada paso.
+8. ¿Por qué la ruta `A -> C -> D` no es la elegida, si `C` se procesa antes que `B`?
+9. Si la arista `C-D` cambiara de peso `8` a `2`, ¿cambiaría el resultado? Ejecuta el cambio a mano y verifica tu respuesta.
+
+Usando el grafo dirigido de Bellman–Ford (`S→A:4`, `S→B:5`, `A→B:-2`, `A→C:4`, `B→C:3`):
+
+10. Calcula la distancia mínima de `S` a `C` a mano, pasada por pasada.
+11. Agrega la arista `C→A:-6`. Calcula el peso del ciclo `A -> B -> C -> A`. ¿Bellman–Ford lo detectaría? ¿Por qué no existe una distancia mínima finita para los vértices alcanzables desde ese ciclo?
+
+Usando la matriz de Floyd–Warshall (`A→B:3`, `A→C:10`, `B→C:1`, `C→A:2`):
+
+12. Registra qué celdas de la matriz cambian cuando `A`, `B` y `C` se habilitan como intermediarios, en ese orden. Explica por qué `k` debe ser el ciclo exterior y no uno de los interiores.
+
+Usando el grafo de Prim y Kruskal (`A-B:1`, `A-C:4`, `B-C:2`, `B-D:5`, `C-D:3`):
+
+13. Ejecuta Prim desde `A` y Kruskal ordenando todas las aristas. Compara el conjunto de aristas elegido y el costo total.
+14. Agrega una arista `A-D:3` y determina si Kruskal llega a examinarla, dado que el algoritmo se detiene apenas reúne `V - 1` aristas.
 
 ## Resumen
 
-- Un grafo modela objetos (vértices) y relaciones arbitrarias entre ellos (aristas), sin la jerarquía de un árbol.
-- Puede ser dirigido o no dirigido, ponderado o no ponderado.
-- Una lista de adyacencia (`Map<String, List<...>>`) es la representación más común cuando el grafo es disperso.
-- BFS recorre por niveles usando una cola (`Queue` + `ArrayDeque`); es útil para camino más corto sin pesos.
-- DFS recorre en profundidad usando una pila explícita (`Deque` + `ArrayDeque`, nunca `Stack`) o la recursividad.
-- Recorrer un grafo (BFS/DFS) no es lo mismo que encontrar el camino de menor costo.
-- Dijkstra calcula caminos mínimos desde un origen con `PriorityQueue`, siempre que los pesos sean no negativos.
-- Floyd-Warshall, Bellman-Ford, Prim y Kruskal resuelven variantes distintas del problema de caminos mínimos o de conexión de costo mínimo.
-- El algoritmo correcto depende de la pregunta: ¿recorrer?, ¿camino mínimo desde un origen?, ¿entre todos los pares?, ¿conectar todo al menor costo?
+- Un grafo modela objetos (vértices) y relaciones arbitrarias entre ellos (aristas), sin la jerarquía de un árbol. Puede ser dirigido o no dirigido, ponderado o no ponderado.
+- Una lista de adyacencia (`Map<String, List<...>>`) es la representación más común cuando el grafo es disperso; una matriz sigue siendo útil para grafos densos o consultas `O(1)`.
+- BFS recorre por niveles usando una cola (`Queue` + `ArrayDeque`); encuentra el camino con menos aristas en grafos no ponderados y es naturalmente iterativo.
+- DFS recorre en profundidad usando recursión o una pila explícita (`Deque` + `ArrayDeque`, nunca `Stack`); es especialmente útil para ciclos, dependencias, retroceso y ordenamiento topológico.
+- Ambos recorridos necesitan un conjunto de visitados, y ambos cuestan `O(V + A)` con lista de adyacencia, `O(V²)` con matriz.
+- Recorrer un grafo (BFS/DFS) no es lo mismo que encontrar el camino de menor costo cuando las aristas tienen pesos distintos.
+- Dijkstra calcula caminos mínimos desde un origen con `PriorityQueue` y reconstrucción de ruta mediante un mapa de predecesores, siempre que los pesos sean no negativos: `O((V+A) log V)`.
+- Bellman–Ford admite pesos negativos y detecta ciclos negativos alcanzables desde el origen: `O(V·A)`.
+- Floyd–Warshall calcula caminos mínimos entre todos los pares mediante programación dinámica: `O(V³)`.
+- Un árbol de expansión mínima (MST) es un problema distinto a los caminos mínimos: conecta todos los vértices al menor costo total, con `V - 1` aristas y sin ciclos. Prim y Kruskal lo resuelven, y ambos admiten pesos negativos.
+- Kruskal usa Union–Find con compresión de caminos y unión por rango para detectar ciclos de forma casi constante por operación.
+- Dijkstra, Bellman–Ford, Floyd–Warshall, Prim y el ciclo principal de Kruskal son naturalmente iterativos; `encontrar` de Union–Find admite una versión recursiva y otra iterativa, ambas válidas.
+- El algoritmo correcto depende de la pregunta: ¿recorrer?, ¿camino mínimo desde un origen?, ¿con pesos negativos?, ¿entre todos los pares?, ¿conectar todo al menor costo?
+
+## Referencias técnicas primarias
+
+- [RFC 2328: OSPF Version 2](https://www.rfc-editor.org/rfc/rfc2328.html), especialmente la sección del cálculo del árbol de caminos mínimos mediante Dijkstra.
+- [RFC 2453: RIP Version 2](https://www.rfc-editor.org/rfc/rfc2453.html), que describe RIP como protocolo basado en Bellman–Ford o vector de distancia.
+- [Amazon VPC: funcionamiento de la prioridad de rutas](https://docs.aws.amazon.com/vpc/latest/userguide/route-tables-priority.html), que documenta la coincidencia de prefijo más larga.
+- [Amazon Location Service Routes API](https://docs.aws.amazon.com/cli/latest/reference/geo-routes/), como ejemplo de un servicio empresarial de cálculo de rutas sin asumir un algoritmo interno no documentado.
