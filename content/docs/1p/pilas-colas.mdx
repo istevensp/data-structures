@@ -7,9 +7,9 @@ parcial: 1
 topic: pilas-colas
 ---
 
-Pilas y colas son ambas listas restringidas: solo cambia **por dónde** se permite entrar
-y salir. Esa única diferencia en la disciplina de acceso determina en qué orden salen
-los elementos y para qué problemas sirve cada una.
+Pilas y colas son ambas listas restringidas: solo cambia **por dónde** se permite entrar y
+salir. Esa única diferencia en la disciplina de acceso determina en qué orden salen los
+elementos y para qué problemas sirve cada una.
 
 ## Pila (Stack) — LIFO
 
@@ -17,18 +17,217 @@ Los elementos se añaden y remueven por un único extremo, el **tope**. El últi
 entrar es el primero en salir (*Last In, First Out*). Como un pilo de cartas sobre un
 escritorio: la última carta que llega es la primera que se revisa.
 
-Operaciones básicas:
+```text
+push(10)   push(20)   push(5)    pop() -> 5
+  10         10         10         10
+             20         20         20
+                        5  <- tope
+```
 
-- **`push(elemento)`** — agrega un elemento al tope; la pila crece.
-- **`pop()`** — remueve y retorna el elemento tope; error si la pila está vacía
-  (*subdesbordamiento*).
-- **`peek()`** — consulta el elemento tope sin removerlo; también falla si está vacía.
-- **`size()`** / **`isEmpty()`**.
+### Operaciones básicas
 
-En Java, `Stack<E>` existe pero está basada en `Vector` (una implementación antigua);
-en código moderno se prefiere `Deque<E>` (`ArrayDeque` o `LinkedList`) usando
-`push()`/`pop()`, que es más eficiente y es la forma recomendada por la propia
-documentación de Java.
+| Operación | Qué hace | Complejidad | Por qué |
+|---|---|---|---|
+| `push(elemento)` | Agrega un elemento al tope; la pila crece. | O(1) | Solo toca el extremo — no hay que desplazar ni recorrer nada. |
+| `pop()` | Remueve y retorna el elemento tope; error si la pila está vacía (*subdesbordamiento*). | O(1) | Mismo motivo: un único extremo. |
+| `peek()` | Consulta el elemento tope sin removerlo; también falla si está vacía. | O(1) | Solo lee la referencia al tope, no la modifica. |
+| `size()` / `isEmpty()` | Consultan el tamaño o si está vacía. | O(1) | Se mantiene un contador aparte; no hace falta recorrer la pila. |
+
+### Código Java: pila respaldada por un arreglo
+
+Igual que un `ArrayList`, un arreglo puede llenarse — cuando eso pasa, hay que
+redimensionar (duplicar la capacidad y copiar), tal como se explicó en
+[Listas](/teaching/data-structures/1p/listas).
+
+```java
+public class PilaArreglo<T> {
+    private Object[] datos;
+    private int tope; // índice del próximo espacio libre
+
+    public PilaArreglo() {
+        datos = new Object[4];
+        tope = 0;
+    }
+
+    public void push(T elemento) {
+        if (tope == datos.length) {
+            redimensionar();
+        }
+        datos[tope] = elemento;
+        tope++;
+    }
+
+    @SuppressWarnings("unchecked")
+    public T pop() {
+        if (isEmpty()) throw new RuntimeException("Pila vacía: subdesbordamiento");
+        tope--;
+        T elemento = (T) datos[tope];
+        datos[tope] = null;
+        return elemento;
+    }
+
+    @SuppressWarnings("unchecked")
+    public T peek() {
+        if (isEmpty()) throw new RuntimeException("Pila vacía");
+        return (T) datos[tope - 1];
+    }
+
+    public boolean isEmpty() { return tope == 0; }
+    public int size() { return tope; }
+
+    private void redimensionar() {
+        Object[] nuevo = new Object[datos.length * 2];
+        System.arraycopy(datos, 0, nuevo, 0, datos.length);
+        datos = nuevo;
+    }
+}
+```
+
+Traza real de `push(10)`, `push(20)`, `push(5)`, `push(8)`, `push(1)` (capacidad
+inicial 4) y dos `pop()`:
+
+| Operación | Estado del arreglo | `tope` | `size()` |
+|---|---|---|---|
+| `push(10)` | `[10, _, _, _]` | 1 | 1 |
+| `push(20)` | `[10, 20, _, _]` | 2 | 2 |
+| `push(5)` | `[10, 20, 5, _]` | 3 | 3 |
+| `push(8)` | `[10, 20, 5, 8]` | 4 | 4 |
+| `push(1)` | arreglo lleno → redimensiona a capacidad 8 → `[10, 20, 5, 8, 1, _, _, _]` | 5 | 5 |
+| `pop()` → `1` | `[10, 20, 5, 8, _, _, _, _]` | 4 | 4 |
+| `pop()` → `8` | `[10, 20, 5, _, _, _, _, _]` | 3 | 3 |
+
+`push`/`pop`/`peek` son O(1) **amortizado**: la mayoría de los `push` no redimensiona,
+pero cuando el arreglo se llena hay que copiar todos los elementos una vez — igual que en
+`ArrayList`, ese costo repartido entre todos los `push` sigue promediando O(1) por
+operación.
+
+### Código Java: pila respaldada por nodos enlazados
+
+No necesita redimensionar nunca porque cada `push` crea un nodo nuevo. A cambio, cada
+nodo gasta memoria extra en la referencia `siguiente`.
+
+```java
+public class PilaEnlazada<T> {
+    private static class Nodo<T> {
+        T valor;
+        Nodo<T> siguiente;
+        Nodo(T valor, Nodo<T> siguiente) {
+            this.valor = valor;
+            this.siguiente = siguiente;
+        }
+    }
+
+    private Nodo<T> tope;
+    private int size;
+
+    public void push(T elemento) {
+        tope = new Nodo<>(elemento, tope); // el nodo nuevo apunta al antiguo tope
+        size++;
+    }
+
+    public T pop() {
+        if (isEmpty()) throw new RuntimeException("Pila vacía: subdesbordamiento");
+        T valor = tope.valor;
+        tope = tope.siguiente; // el segundo nodo pasa a ser el nuevo tope
+        size--;
+        return valor;
+    }
+
+    public T peek() {
+        if (isEmpty()) throw new RuntimeException("Pila vacía");
+        return tope.valor;
+    }
+
+    public boolean isEmpty() { return tope == null; }
+    public int size() { return size; }
+}
+```
+
+Con `push("A")`, `push("B")`, `push("C")`: `peek()` devuelve `C` (el último nodo
+enlazado, ahora tope). Dos `pop()` seguidos devuelven `C` y luego `B` — cada `pop`
+simplemente mueve `tope` a `tope.siguiente`, sin tocar ningún otro nodo. `size()` queda
+en `1`.
+
+**¿Arreglo o enlazada?** Con arreglo, `push`/`pop` son O(1) amortizado y hay mejor uso de
+caché (memoria contigua); con nodos enlazados, cada operación es O(1) **garantizado**
+(nunca hay una copia grande de golpe) pero gasta más memoria por puntero. En Java,
+`ArrayDeque` (arreglo) es la opción recomendada salvo que se necesite ese peor caso
+garantizado.
+
+### Aplicación real: verificar paréntesis balanceados
+
+Un uso clásico de pilas: decidir si una expresión con `()`, `[]`, `{}` está bien
+balanceada. La idea: cada símbolo de apertura se apila; cada símbolo de cierre debe
+coincidir con el que está en el tope en ese momento — si no coincide, o si la pila está
+vacía cuando llega un cierre, la expresión no está balanceada.
+
+```java
+import java.util.ArrayDeque;
+import java.util.Deque;
+
+public class Balanceador {
+    static boolean estaBalanceada(String expresion) {
+        Deque<Character> pila = new ArrayDeque<>();
+        for (char c : expresion.toCharArray()) {
+            if (c == '(' || c == '[' || c == '{') {
+                pila.push(c);
+            } else if (c == ')' || c == ']' || c == '}') {
+                if (pila.isEmpty()) return false;
+                char abierto = pila.pop();
+                if (c == ')' && abierto != '(') return false;
+                if (c == ']' && abierto != '[') return false;
+                if (c == '}' && abierto != '{') return false;
+            }
+        }
+        return pila.isEmpty(); // si quedó algo sin cerrar, no está balanceada
+    }
+}
+```
+
+Salida real al ejecutar sobre 5 casos:
+
+| Expresión | ¿Balanceada? | Por qué |
+|---|---|---|
+| `(a + [b * c])` | `true` | Cada cierre coincide con el último abierto. |
+| `(a + [b * c)]` | `false` | El `)` llega cuando el tope es `[`, no `(` — no coincide. |
+| `{[()]}` | `true` | Anidamiento correcto, cada tipo cierra en el orden inverso al que abrió. |
+| `(()` | `false` | Quedó un `(` sin cerrar — la pila no termina vacía. |
+| `""` (vacía) | `true` | No hay nada que desbalancear. |
+
+Este patrón — "cada apertura se resuelve con el cierre más reciente que aún no se ha
+cerrado" — es exactamente la disciplina LIFO, y es la razón por la que una pila (y no una
+cola) es la estructura correcta para este problema.
+
+### `Stack` vs. `Deque` en Java
+
+```java
+// Forma antigua — evitar en código nuevo
+Stack<Integer> pila = new Stack<>();
+pila.push(1);
+pila.pop();
+
+// Forma recomendada
+Deque<Integer> pila2 = new ArrayDeque<>();
+pila2.push(1);
+pila2.pop();
+```
+
+`Stack<E>` existe en Java pero está basada en `Vector` (una clase antigua): todos sus
+métodos están `synchronized`, lo que agrega un costo de sincronización innecesario en
+código de un solo hilo, y además hereda métodos de acceso por índice de `Vector` que
+rompen la disciplina LIFO (nada impide llamar `pila.get(0)`). `Deque<E>` respaldada por
+`ArrayDeque` no tiene ese costo ni esa API inconsistente, y es la forma recomendada por
+la propia documentación de Java — el mismo patrón que ya se usa para pilas y colas en
+[Grafos](/teaching/data-structures/2p/grafos).
+
+### Pilas y recursividad
+
+Cada llamada recursiva se apila esperando a que la siguiente termine — es la misma
+disciplina LIFO, solo que la pila la administra la JVM (la *pila de llamadas*), no el
+programador. Por eso una recursión sin caso base agota la memoria con
+`StackOverflowError`: cada llamada agrega un marco a esa pila sin que ninguna se
+resuelva y lo libere. Ver [Recursividad](/teaching/data-structures/1p/recursividad)
+para el detalle.
 
 ## Cola (Queue) — FIFO
 
@@ -36,23 +235,301 @@ Los elementos entran por un extremo (**final**) y salen por el otro (**frente**)
 primero en llegar es el primero en salir (*First In, First Out*) — como una fila para
 comprar entradas de cine.
 
-Operaciones básicas:
+```text
+encolar(1)  encolar(2)  encolar(3)   desencolar() -> 1
+  [1]         [1 2]       [1 2 3]        [2 3]
+  ^frente     ^frente     ^frente        ^frente
+```
 
-- **`encolar(elemento)`** — inserta al final; la cola crece.
-- **`desencolar()`** — remueve y retorna el elemento del frente; error si está vacía.
-- **`colaFrente()`** / **`colaFinal()`** — consultan sin remover.
+### Operaciones básicas
+
+| Operación | Qué hace | Complejidad |
+|---|---|---|
+| `encolar(elemento)` | Inserta al final; la cola crece. | O(1) |
+| `desencolar()` | Remueve y retorna el elemento del frente; error si está vacía. | O(1) |
+| `colaFrente()` / `colaFinal()` | Consultan sin remover. | O(1) |
 
 ### El problema de implementar una cola con un arreglo lineal
 
-Si el frente avanza cada vez que se desencola, el espacio al inicio del arreglo queda
-desperdiciado y nunca se reutiliza — eventualmente la cola parece "llena" aunque tenga
-huecos libres al principio. La solución es un **arreglo circular**: el índice siguiente al
-último (`MAX-1`) vuelve a ser `0`, así el frente y el final recorren el arreglo en círculo y
-ningún espacio se desperdicia.
+Una implementación ingenua avanza `frente` cada vez que se desencola, sin reutilizar
+nunca ese espacio:
 
-### Cola de prioridad
+```java
+public class ColaArregloLineal<T> {
+    private Object[] datos;
+    private int frente;
+    private int tamanoActual;
+
+    public ColaArregloLineal(int capacidad) {
+        datos = new Object[capacidad];
+    }
+
+    public void encolar(T elemento) {
+        int posicionFinal = frente + tamanoActual;
+        if (posicionFinal == datos.length) {
+            throw new RuntimeException("Cola llena");
+        }
+        datos[posicionFinal] = elemento;
+        tamanoActual++;
+    }
+
+    @SuppressWarnings("unchecked")
+    public T desencolar() {
+        if (tamanoActual == 0) throw new RuntimeException("Cola vacía");
+        T elemento = (T) datos[frente];
+        datos[frente] = null;
+        frente++; // el espacio en datos[frente-1] queda desperdiciado para siempre
+        tamanoActual--;
+        return elemento;
+    }
+}
+```
+
+Traza real con capacidad 4:
+
+| Operación | Estado (`_` = vacío) | `frente` | `tamanoActual` |
+|---|---|---|---|
+| `encolar(1..4)` | `[1, 2, 3, 4]` | 0 | 4 (arreglo lleno) |
+| `desencolar()` → `1` | `[_, 2, 3, 4]` | 1 | 3 |
+| `desencolar()` → `2` | `[_, _, 3, 4]` | 2 | 2 |
+| `encolar(5)` | **falla** con `"Cola llena"` | 2 | 2 |
+
+`encolar(5)` falla aunque solo hay 2 elementos reales — la condición
+`frente + tamanoActual == datos.length` da `2 + 2 == 4`, así que la cola se considera
+"llena" aunque los índices `0` y `1` están libres. Ese espacio nunca se reutiliza porque
+`frente` solo avanza, nunca retrocede ni da la vuelta.
+
+### La solución: arreglo circular
+
+El índice siguiente al último (`capacidad - 1`) vuelve a ser `0`, calculado con el
+operador módulo — así el frente y el final recorren el arreglo en círculo y ningún
+espacio se desperdicia.
+
+```java
+public class ColaCircular<T> {
+    private Object[] datos;
+    private int frente;
+    private int fin;   // índice donde se insertará el próximo elemento
+    private int tamanoActual;
+
+    public ColaCircular(int capacidad) {
+        datos = new Object[capacidad];
+    }
+
+    public void encolar(T elemento) {
+        if (tamanoActual == datos.length) throw new RuntimeException("Cola llena");
+        datos[fin] = elemento;
+        fin = (fin + 1) % datos.length; // vuelve a 0 al pasar del último índice
+        tamanoActual++;
+    }
+
+    @SuppressWarnings("unchecked")
+    public T desencolar() {
+        if (tamanoActual == 0) throw new RuntimeException("Cola vacía");
+        T elemento = (T) datos[frente];
+        datos[frente] = null;
+        frente = (frente + 1) % datos.length;
+        tamanoActual--;
+        return elemento;
+    }
+}
+```
+
+Traza real con capacidad 4:
+
+| Operación | Estado | `frente` | `fin` |
+|---|---|---|---|
+| inicial | `[_, _, _, _]` | 0 | 0 |
+| `encolar(1..4)` | `[1, 2, 3, 4]` | 0 | 0 *(dio la vuelta: `(3+1)%4=0`)* |
+| `desencolar()` → `1` | `[_, 2, 3, 4]` | 1 | 0 |
+| `desencolar()` → `2` | `[_, _, 3, 4]` | 2 | 0 |
+| `encolar(5)` | `[5, _, 3, 4]` | 2 | 1 |
+| `encolar(6)` | `[5, 6, 3, 4]` | 2 | 2 |
+
+`encolar(5)` reutiliza el índice `0`, el mismo espacio que la versión lineal
+desperdiciaba para siempre — `fin` dio la vuelta con `(0 + 1) % 4` después de insertar en
+la posición 3.
+
+**Por qué se necesita `tamanoActual` aparte:** cuando la cola está completamente llena,
+`frente` y `fin` coinciden (ambos apuntan al mismo índice, como en el estado inicial
+`frente=0, fin=0` de la tabla de arriba, que también es el estado justo después de
+llenarla). Sin un contador separado, `frente == fin` sería ambiguo entre "vacía" y
+"llena" — por eso la implementación lleva `tamanoActual` en vez de inferir el estado
+solo a partir de los dos índices.
+
+### Cola respaldada por nodos enlazados
+
+```java
+public class ColaEnlazada<T> {
+    private static class Nodo<T> {
+        T valor;
+        Nodo<T> siguiente;
+        Nodo(T valor) { this.valor = valor; }
+    }
+
+    private Nodo<T> frente;
+    private Nodo<T> final_;
+    private int size;
+
+    public void encolar(T elemento) {
+        Nodo<T> nuevo = new Nodo<>(elemento);
+        if (final_ == null) {
+            frente = nuevo; // primer elemento: frente y final son el mismo nodo
+        } else {
+            final_.siguiente = nuevo;
+        }
+        final_ = nuevo;
+        size++;
+    }
+
+    public T desencolar() {
+        if (frente == null) throw new RuntimeException("Cola vacía");
+        T valor = frente.valor;
+        frente = frente.siguiente;
+        if (frente == null) final_ = null; // se vació: hay que resetear final también
+        size--;
+        return valor;
+    }
+
+    public int size() { return size; }
+}
+```
+
+Nunca necesita redimensionar ni dar la vuelta — cada `encolar` agrega un nodo al final;
+cada `desencolar` avanza `frente`. El único detalle delicado es resetear `final_` a
+`null` cuando la cola queda vacía; olvidarlo dejaría `final_` apuntando a un nodo
+"fantasma" que ya no es parte de la cola, y el próximo `encolar` lo conectaría mal.
+
+### `Queue<E>` en Java
+
+```java
+Queue<Integer> cola = new ArrayDeque<>();
+cola.offer(1);       // encolar
+Integer x = cola.poll();  // desencolar (null si está vacía, no lanza excepción)
+```
+
+Igual que con pilas, se prefiere `Queue<E>` respaldada por `ArrayDeque`, no `LinkedList`,
+salvo que haya una razón específica para esta última — ver la nota equivalente en
+[Grafos](/teaching/data-structures/2p/grafos).
+
+## Cola de prioridad
 
 En una cola de prioridad, el orden de salida ya no depende de cuándo llegó el elemento,
 sino de su **prioridad**: en una cola de prioridad ascendente se desencola siempre el
-elemento más pequeño; en una descendente, el más grande. Dentro de una misma
-prioridad, los elementos siguen comportándose como una cola normal (FIFO).
+elemento más pequeño; en una descendente, el más grande. Por dentro, `java.util.PriorityQueue`
+se implementa con un **min-heap** (o max-heap) — ver
+[Heap](/teaching/data-structures/2p/arboles#heap-prioridad-antes-que-orden-total) para
+cómo logra `O(log n)` en `offer`/`poll` en vez de recorrer todo para encontrar el
+mínimo.
+
+```java
+PriorityQueue<Tarea> cola = new PriorityQueue<>((a, b) -> a.prioridad - b.prioridad);
+cola.offer(new Tarea("Backup nocturno", 5));
+cola.offer(new Tarea("Caída de servidor", 1));
+cola.offer(new Tarea("Reporte semanal", 8));
+cola.offer(new Tarea("Fuga de memoria", 1));
+cola.offer(new Tarea("Actualizar changelog", 8));
+```
+
+`poll()` en orden real (menor número de prioridad = más urgente):
+
+```
+Caída de servidor(p1)
+Fuga de memoria(p1)
+Backup nocturno(p5)
+Reporte semanal(p8)
+Actualizar changelog(p8)
+```
+
+### `PriorityQueue` **no** garantiza orden FIFO entre elementos con la misma prioridad
+
+En la traza anterior, los dos elementos de prioridad 1 salieron en el mismo orden en que
+se insertaron — pero eso fue casualidad de esa secuencia particular, no una garantía del
+API. El siguiente caso lo demuestra con datos reales:
+
+```java
+PriorityQueue<Tarea> cola = new PriorityQueue<>((a, b) -> a.prioridad - b.prioridad);
+cola.offer(new Tarea("T1", 1));
+cola.offer(new Tarea("T2", 1));
+cola.offer(new Tarea("T3", 1));
+cola.offer(new Tarea("T4", 1));
+cola.offer(new Tarea("T5", 1));
+
+cola.poll();              // extrae T1, dispara un reacomodo interno del heap
+cola.offer(new Tarea("T6", 1));
+// orden real de poll() a partir de aquí:
+```
+
+Salida real:
+
+```
+T5(p1)
+T6(p1)
+T4(p1)
+T3(p1)
+T2(p1)
+```
+
+`T5` sale **antes** que `T2`, `T3` y `T4`, aunque se insertó después de los tres. Esto
+pasa porque `poll()` no solo remueve la raíz del heap: mueve el **último** elemento del
+arreglo interno a la raíz y lo "hunde" (`sift-down`) comparándolo con sus hijos — ese
+reacomodo no tiene ninguna relación con el orden de inserción. Por eso, si un problema
+necesita FIFO real entre elementos de igual prioridad, hay que agregar un criterio de
+desempate explícito en el comparador (por ejemplo, un contador de secuencia creciente
+que se compare cuando las prioridades son iguales) — no asumir que `PriorityQueue` ya lo
+hace.
+
+## Pila vs. Cola — cuál elegir
+
+| Necesitas... | Usa |
+|---|---|
+| Deshacer la última acción, evaluar expresiones, recorrer un árbol/grafo en profundidad (DFS) | Pila (LIFO) |
+| Procesar en el mismo orden de llegada, recorrer un árbol/grafo por niveles (BFS), simular una fila real | Cola (FIFO) |
+| Procesar siempre lo más urgente/importante primero, sin importar cuándo llegó | Cola de prioridad |
+
+## Errores frecuentes
+
+- **"`pop()` y `poll()` hacen lo mismo."** En pilas, `pop()` remueve el tope. En
+  `java.util.Queue`, `poll()` remueve el frente — nombres distintos para la misma idea
+  de "quitar y devolver", pero de extremos distintos según la estructura.
+- **"Una cola circular necesita un arreglo cuyo tamaño sea potencia de 2."** Falso — el
+  operador módulo (`% capacidad`) funciona para cualquier capacidad, no solo potencias
+  de 2 (esa optimización con `&` en vez de `%` sí existe, pero es un detalle de
+  rendimiento, no un requisito de correctitud).
+- **"`PriorityQueue.poll()` en Java devuelve los elementos en el mismo orden en que se
+  insertaron cuando la prioridad es igual."** Falso — ver la sección de arriba: no hay
+  ninguna garantía de FIFO entre iguales, solo se garantiza que sale un elemento con
+  prioridad mínima (o máxima) entre los presentes.
+- **"`frente == fin` siempre significa que la cola circular está vacía."** Ambiguo sin
+  más contexto: también ocurre cuando está completamente llena. Por eso las
+  implementaciones de esta página llevan un contador `tamanoActual` aparte.
+
+## Comprueba lo aprendido
+
+Sobre una pila vacía respaldada por arreglo (capacidad inicial 4), ejecuta en orden:
+`push(3)`, `push(7)`, `push(1)`, `pop()`, `push(9)`, `push(2)`, `push(4)`, `push(6)`.
+
+- ¿Cuál es el valor de `peek()` después de la última operación?
+- ¿En qué operación ocurre exactamente el redimensionamiento, y a qué capacidad pasa el
+  arreglo?
+- Sobre una cola circular de capacidad 3, inicialmente vacía: `encolar(A)`,
+  `encolar(B)`, `encolar(C)`, `desencolar()`, `encolar(D)`. Dibuja el arreglo y marca
+  `frente` y `fin` después de cada paso.
+- ¿Por qué la verificación de paréntesis balanceados usa una pila y no una cola? ¿Qué
+  saldría mal si se usara una cola en su lugar?
+
+## Resumen
+
+- Pila y cola son la misma idea — una lista con acceso restringido — con la disciplina
+  de acceso invertida entre sí: LIFO contra FIFO.
+- `push`/`pop`/`peek` y `encolar`/`desencolar` son O(1) en ambas implementaciones
+  (arreglo o nodos enlazados); la diferencia está en si ese O(1) es amortizado
+  (arreglo, por el redimensionamiento ocasional) o garantizado (enlazada).
+- Un arreglo lineal para una cola desperdicia espacio al inicio; un arreglo circular
+  (con módulo) lo reutiliza — a costa de necesitar un contador de tamaño aparte, porque
+  `frente == fin` por sí solo no distingue "vacía" de "llena".
+- En Java, se prefiere `Deque`/`ArrayDeque` sobre la vieja `Stack`, y `Queue`/`ArrayDeque`
+  sobre `LinkedList`, para pilas y colas respectivamente.
+- `PriorityQueue` garantiza sacar siempre el elemento de prioridad mínima (o máxima),
+  pero **no** garantiza ningún orden entre elementos de igual prioridad — si eso
+  importa, hay que resolverlo con un desempate explícito.

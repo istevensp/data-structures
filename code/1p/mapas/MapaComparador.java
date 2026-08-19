@@ -1,3 +1,9 @@
+// Un HashMap no tiene orden de recorrido garantizado (ver el tópico
+// Mapas). Para mostrarlo ordenado por un criterio, hay que sacar sus
+// entradas a una lista y ordenar esa lista con un Comparator — el mapa en
+// sí no se ordena. Dos variantes del mismo patrón: ordenar por clave
+// (nombre) y ordenar por valor (número).
+
 import java.util.*;
 
 public class AgendaHashMap {
@@ -7,8 +13,9 @@ public class AgendaHashMap {
         agenda.put("Ana", "0987654321");
         agenda.put("Pedro", "0971122334");
 
-        // Convertimos a lista de entradas
-        List<Map.Entry<String, String>> lista = new ArrayList<>(agenda.entrySet());
+        // Convertimos a lista de entradas — HashMap por sí solo no se puede
+        // ordenar in-place, pero una List<Map.Entry<...>> sí.
+        List<Map.Entry<String, String>> porNombre = new ArrayList<>(agenda.entrySet());
 
         // Comparator por clave (nombre)
         Comparator<Map.Entry<String, String>> comparadorPorNombre =
@@ -19,26 +26,16 @@ public class AgendaHashMap {
                     }
                 };
 
-        lista.sort(comparadorPorNombre);
+        porNombre.sort(comparadorPorNombre);
 
         System.out.println("Agenda ordenada por nombre (Comparator):");
-        for (Map.Entry<String, String> entry : lista) {
+        for (Map.Entry<String, String> entry : porNombre) {
             System.out.println(entry.getKey() + ": " + entry.getValue());
         }
-    }
-}
 
-
-import java.util.*;
-
-public class AgendaHashMap {
-    public static void main(String[] args) {
-        Map<String, String> agenda = new HashMap<>();
-        agenda.put("Carlos", "0991234567");
-        agenda.put("Ana", "0987654321");
-        agenda.put("Pedro", "0971122334");
-
-        List<Map.Entry<String, String>> lista = new ArrayList<>(agenda.entrySet());
+        // Segunda lista independiente, para no reordenar la primera —
+        // mismo mapa, criterio de orden distinto.
+        List<Map.Entry<String, String>> porNumero = new ArrayList<>(agenda.entrySet());
 
         // Comparator por valor (número)
         Comparator<Map.Entry<String, String>> comparadorPorNumero =
@@ -49,10 +46,10 @@ public class AgendaHashMap {
                     }
                 };
 
-        Collections.sort(lista, comparadorPorNumero);
+        Collections.sort(porNumero, comparadorPorNumero);
 
-        System.out.println("Agenda ordenada por número (Comparator):");
-        for (Map.Entry<String, String> entry : lista) {
+        System.out.println("\nAgenda ordenada por número (Comparator):");
+        for (Map.Entry<String, String> entry : porNumero) {
             System.out.println(entry.getKey() + ": " + entry.getValue());
         }
     }

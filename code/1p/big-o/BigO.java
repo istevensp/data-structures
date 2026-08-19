@@ -1,5 +1,17 @@
+// Un ejemplo ejecutable por cada complejidad común, de O(1) a O(n!) — cada
+// clase es independiente (su propio main), para poder compilarlas y
+// correrlas una por una y ver la complejidad de cada TDA/algoritmo en la
+// práctica, no solo en la tabla de Big(O).
+
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Queue;
+import java.util.Stack;
+
 /** 1. Arreglos (Arrays)
-En un arreglo en Java, los elementos están almacenados en posiciones contiguas, por lo que puedes acceder a cualquier elemento directamente por su índice.
+En un arreglo en Java, los elementos están almacenados en posiciones contiguas, por lo
+que puedes acceder a cualquier elemento directamente por su índice.
 
 Complejidad de Operaciones
 Acceso: O(1) - Acceder a un elemento por su índice toma tiempo constante.
@@ -11,10 +23,10 @@ public class ArregloEjemplo {
     public static void main(String[] args) {
         // Crear un arreglo de 5 elementos
         int[] arreglo = {10, 20, 30, 40, 50};
-        
+
         // Acceder a un elemento (complejidad O(1))
         System.out.println("Elemento en el índice 2: " + arreglo[2]);  // Resultado: 30
-        
+
         // Búsqueda de un elemento (complejidad O(n))
         int buscar = 40;
         boolean encontrado = false;
@@ -28,7 +40,7 @@ public class ArregloEjemplo {
         if (!encontrado) {
             System.out.println("Elemento no encontrado");
         }
-        
+
         // Inserción de un nuevo elemento (complejidad O(n))
         // Para insertar 25 en el índice 2, los elementos después de 30 deben desplazarse
         int[] nuevoArreglo = new int[arreglo.length + 1];
@@ -39,12 +51,13 @@ public class ArregloEjemplo {
         for (int i = 2; i < arreglo.length; i++) {
             nuevoArreglo[i + 1] = arreglo[i];
         }
+        System.out.println("Arreglo con 25 insertado en el índice 2: " + Arrays.toString(nuevoArreglo));
     }
 }
 
 
 
-/** 2. Listas Enlazadas (Linked Lists) 
+/** 2. Listas Enlazadas (Linked Lists)
 En una lista enlazada, los elementos no están almacenados en posiciones contiguas, sino que cada elemento (nodo) contiene una referencia al siguiente nodo.
 
 Complejidad de Operaciones
@@ -52,7 +65,7 @@ Acceso: O(n) - Para acceder a un elemento necesitas recorrer la lista desde el p
 Búsqueda: O(n) - Debes recorrer la lista nodo por nodo hasta encontrar el elemento.
 Inserción/Eliminación:
 Al inicio: O(1) - Puedes insertar o eliminar rápidamente en el comienzo de la lista.
-En el medio o al final: O(n) - Debes recorrer hasta el nodo donde quieres insertar o eliminar.**/ 
+En el medio o al final: O(n) - Debes recorrer hasta el nodo donde quieres insertar o eliminar.**/
 
 
 class Nodo {
@@ -65,7 +78,7 @@ class Nodo {
     }
 }
 
-public class ListaEnlazada {
+class ListaEnlazada {
     Nodo cabeza;
 
     // Método para agregar al inicio (complejidad O(1))
@@ -112,6 +125,7 @@ public class ListaEnlazada {
         System.out.println("¿Elemento 20 encontrado? " + lista.buscar(20));  // true
     }
 }
+
 /** 3. Pilas (Stacks)
 Una pila (stack) sigue el principio LIFO (Last In, First Out). Las operaciones se realizan en la parte superior de la pila.
 
@@ -121,9 +135,7 @@ Push (inserción): O(1) - Insertar en la parte superior es constante.
 Pop (eliminación): O(1) - Eliminar el elemento superior es constante.**/
 
 
-import java.util.Stack;
-
-public class PilaEjemplo {
+class PilaEjemplo {
     public static void main(String[] args) {
         Stack<Integer> pila = new Stack<>();
 
@@ -150,12 +162,11 @@ Dequeue (eliminación): O(1) - Eliminar desde el frente de la cola es constante.
 Acceso: O(n) - Para acceder a un elemento que no está en el frente, debes recorrer la cola.**/
 
 
-import java.util.LinkedList;
-import java.util.Queue;
-
-public class ColaEjemplo {
+class ColaEjemplo {
     public static void main(String[] args) {
-        Queue<Integer> cola = new LinkedList<>();
+        // Ver el tópico Pilas y Colas para por qué se prefiere ArrayDeque
+        // sobre LinkedList como implementación de Queue.
+        Queue<Integer> cola = new ArrayDeque<>();
 
         // Insertar elementos en la cola (complejidad O(1))
         cola.add(10);
@@ -180,9 +191,7 @@ Inserción: O(1) en promedio.
 Eliminación: O(1) en promedio. **/
 
 
-import java.util.HashMap;
-
-public class HashMapEjemplo {
+class HashMapEjemplo {
     public static void main(String[] args) {
         HashMap<String, Integer> mapa = new HashMap<>();
 
@@ -196,6 +205,7 @@ public class HashMapEjemplo {
 
         // Eliminar un elemento (complejidad O(1) en promedio)
         mapa.remove("Luis");
+        System.out.println("¿Sigue Luis? " + mapa.containsKey("Luis"));  // false
     }
 }
 
@@ -205,7 +215,7 @@ Este tipo de complejidad es común en algoritmos de ordenamiento eficientes como
 
 Ejemplo: Quick Sort **/
 
-public class QuickSortExample {
+class QuickSortExample {
 
     // Método para realizar Quick Sort
     public static void quickSort(int[] arr, int low, int high) {
@@ -214,7 +224,7 @@ public class QuickSortExample {
             int pi = partition(arr, low, high);
 
             // Recursivamente ordenar las subpartes
-            quickSort(arr, low, pi - 1);  // Complejidad O(log n) en cada llamada recursiva
+            quickSort(arr, low, pi - 1);
             quickSort(arr, pi + 1, high);
         }
     }
@@ -245,7 +255,6 @@ public class QuickSortExample {
 
     public static void main(String[] args) {
         int[] arr = {10, 7, 8, 9, 1, 5};
-        int n = arr.length;
 
         System.out.println("Array original:");
         for (int num : arr) {
@@ -253,22 +262,27 @@ public class QuickSortExample {
         }
 
         // Llamar a Quick Sort
-        quickSort(arr, 0, n - 1);
+        quickSort(arr, 0, arr.length - 1);
 
         System.out.println("\nArray ordenado:");
         for (int num : arr) {
             System.out.print(num + " ");
         }
+        System.out.println();
     }
 }
-Explicación: El algoritmo Quick Sort tiene una complejidad promedio de O(n log n), pero en el peor de los casos, puede ser O(n²) si el pivote no se elige correctamente. El código divide el arreglo en partes y luego combina los resultados para ordenar el arreglo completo.
+/* Explicación: el algoritmo Quick Sort tiene una complejidad promedio de O(n log n),
+pero en el peor de los casos puede ser O(n²) si el pivote no se elige correctamente
+(por ejemplo, si siempre cae en el elemento más pequeño o más grande). El código
+divide el arreglo en partes alrededor de un pivote y luego combina los resultados
+recursivamente hasta ordenar el arreglo completo. */
 
 /** O(n²) - Cuadrática
 Esta complejidad es común en algoritmos ineficientes como el Bubble Sort o el Insertion Sort, donde cada elemento debe compararse con todos los demás elementos.
 
 Ejemplo: Bubble Sort**/
 
-public class BubbleSortExample {
+class BubbleSortExample {
 
     // Método para realizar Bubble Sort
     public static void bubbleSort(int[] arr) {
@@ -300,9 +314,13 @@ public class BubbleSortExample {
         for (int num : arr) {
             System.out.print(num + " ");
         }
+        System.out.println();
     }
 }
-Explicación: El algoritmo Bubble Sort compara cada par de elementos adyacentes y los intercambia si están en el orden incorrecto. Tiene una complejidad de O(n²), ya que cada elemento se compara con los demás, lo que lo hace ineficiente para entradas grandes.
+/* Explicación: el algoritmo Bubble Sort compara cada par de elementos adyacentes y
+los intercambia si están en el orden incorrecto. Tiene una complejidad de O(n²), ya
+que cada elemento se compara con los demás en cada pasada, lo que lo hace ineficiente
+para entradas grandes. */
 
 
 /** O(2^n) - Exponencial
@@ -310,7 +328,7 @@ Este tipo de complejidad se observa en problemas que requieren calcular muchas c
 
 Ejemplo: Problema de la Mochila**/
 
-public class MochilaEjemplo {
+class MochilaEjemplo {
 
     // Método para resolver el problema de la mochila de manera recursiva
     public static int knapSack(int capacidad, int pesos[], int valores[], int n) {
@@ -323,7 +341,8 @@ public class MochilaEjemplo {
         if (pesos[n - 1] > capacidad) {
             return knapSack(capacidad, pesos, valores, n - 1);  // Ignorar el artículo
         } else {
-            // Retorna el máximo valor entre tomar o no tomar el artículo
+            // Retorna el máximo valor entre tomar o no tomar el artículo — esta
+            // rama doble por cada artículo es lo que produce las 2^n llamadas.
             return Math.max(valores[n - 1] + knapSack(capacidad - pesos[n - 1], pesos, valores, n - 1),
                             knapSack(capacidad, pesos, valores, n - 1));
         }
@@ -338,14 +357,18 @@ public class MochilaEjemplo {
         System.out.println("Valor máximo en la mochila: " + knapSack(capacidad, pesos, valores, n));
     }
 }
-Explicación: Este código resuelve el problema de la mochila usando fuerza bruta, donde se consideran todas las posibles combinaciones de artículos. Esto lleva a una complejidad de O(2^n), ya que cada artículo tiene dos posibilidades: ser tomado o no.
+/* Explicación: este código resuelve el problema de la mochila usando fuerza bruta,
+donde se consideran todas las posibles combinaciones de artículos (tomarlo o no
+tomarlo). Esto lleva a una complejidad de O(2^n), ya que cada uno de los n artículos
+duplica el número de combinaciones a explorar. */
 
 /** O(n!) - Factorial
 Este tipo de complejidad ocurre en problemas donde hay que calcular todas las permutaciones posibles, como el problema del viajante, en el cual se necesita visitar todas las ciudades y calcular el costo de cada ruta posible.
 
-Ejemplo: Problema del Viajante por Fuerza Bruta**/
+Ejemplo: Problema del Viajante por Fuerza Bruta (ver también AgenteViajero.java, en
+este mismo tópico, para una versión con reconstrucción de la mejor ruta). **/
 
-public class ViajanteEjemplo {
+class ViajanteEjemplo {
 
     // Método para calcular la distancia mínima de todas las permutaciones posibles (complejidad O(n!))
     public static int calcularCosto(int[][] grafo, int[] ruta) {
@@ -390,4 +413,8 @@ public class ViajanteEjemplo {
         permutar(ruta, 0, ruta.length - 1, grafo);
     }
 }
-/**Explicación: Este código resuelve el problema del viajante calculando todas las permutaciones posibles de las ciudades y eligiendo la ruta con el menor costo. Este enfoque tiene una complejidad de O(n!), ya que debe probar todas las posibles rutas.**/
+/* Explicación: este código resuelve el problema del viajante calculando el costo de
+todas las permutaciones posibles de las ciudades (a diferencia de AgenteViajero.java,
+aquí se imprime el costo de cada ruta en vez de guardar solo la mejor). Este enfoque
+tiene una complejidad de O(n!), ya que debe generar y evaluar todas las rutas
+posibles. */

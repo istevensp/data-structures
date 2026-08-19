@@ -10,30 +10,492 @@ topic: mapas
 Un mapa (`Map<K, V>`) asocia **claves únicas** a **valores** — a diferencia de un `Set`,
 cada elemento es un par clave-valor, y la clave sirve para acceder directamente al valor
 sin tener que recorrer toda la estructura. No implementa `Collection<E>`, porque su
-unidad no es un elemento sino un par.
+unidad no es un elemento sino un par: por eso `Map` no tiene `add()`, y en cambio tiene
+`put(clave, valor)`.
+
+Un mapa es la estructura natural cuando el problema requiere buscar por un
+**identificador** en vez de por posición — por ejemplo, buscar los datos de un
+estudiante por su cédula, en vez de recorrer una lista comparando uno por uno.
 
 ## Implementaciones de `Map` en Java
 
-- **`HashMap<K, V>`** — basado en tabla hash. No garantiza orden de recorrido;
-  `get`, `put` y `containsKey` son en promedio O(1). Es la opción por defecto.
-- **`LinkedHashMap<K, V>`** — igual que `HashMap`, pero mantiene el **orden de
-  inserción** de las claves al recorrerlo.
-- **`TreeMap<K, V>`** — mantiene las claves **ordenadas** (orden natural o un
-  `Comparator`), a costa de que sus operaciones sean O(log n) en vez de O(1).
+| Implementación | Orden de recorrido | `put`/`get`/`containsKey` | Por dentro |
+|---|---|---|---|
+| `HashMap<K, V>` | No garantizado. | O(1) promedio. | Tabla hash. |
+| `LinkedHashMap<K, V>` | Orden de **inserción**. | O(1) promedio. | Tabla hash + lista enlazada que conecta las entradas. |
+| `TreeMap<K, V>` | Orden **natural** o el de un `Comparator`. | O(log n). | Árbol balanceado (red-black tree). |
 
-## Operaciones típicas
+`HashMap` es la opción por defecto cuando solo importa el acceso rápido por clave.
+`LinkedHashMap` cuesta lo mismo que `HashMap` pero además recuerda el orden en que se
+insertaron las claves. `TreeMap` es más lento por operación, pero mantiene las claves
+siempre ordenadas — útil cuando hace falta recorrerlas en orden o pedir la mínima/máxima
+clave sin tener que ordenar cada vez.
 
-`put(clave, valor)` inserta o actualiza; `get(clave)` recupera el valor asociado (o `null`
-si no existe); `containsKey(clave)` y `containsValue(valor)` verifican pertenencia;
-`remove(clave)` elimina el par; `keySet()`, `values()` y `entrySet()` devuelven vistas
-para recorrer claves, valores, o pares completos.
+### Mismo contenido, tres órdenes distintos
+
+El siguiente programa inserta los mismos cinco pares clave-valor, **en el mismo orden**,
+en un `HashMap`, un `LinkedHashMap` y un `TreeMap`, y los recorre con `entrySet()`:
+
+```java
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.TreeMap;
+
+public class OrdenMapas {
+    public static void main(String[] args) {
+        String[] claves = {"pera", "manzana", "kiwi", "banana", "uva"};
+        int[] valores = {3, 5, 1, 7, 2};
+
+        Map<String, Integer> hash = new HashMap<>();
+        Map<String, Integer> enlazado = new LinkedHashMap<>();
+        Map<String, Integer> arbol = new TreeMap<>();
+
+        for (int i = 0; i < claves.length; i++) {
+            hash.put(claves[i], valores[i]);
+            enlazado.put(claves[i], valores[i]);
+            arbol.put(claves[i], valores[i]);
+        }
+
+        System.out.println("HashMap:");
+        for (Map.Entry<String, Integer> e : hash.entrySet()) {
+            System.out.println("  " + e.getKey() + " = " + e.getValue());
+        }
+
+        System.out.println("LinkedHashMap:");
+        for (Map.Entry<String, Integer> e : enlazado.entrySet()) {
+            System.out.println("  " + e.getKey() + " = " + e.getValue());
+        }
+
+        System.out.println("TreeMap:");
+        for (Map.Entry<String, Integer> e : arbol.entrySet()) {
+            System.out.println("  " + e.getKey() + " = " + e.getValue());
+        }
+    }
+}
+```
+
+Salida real de esta ejecución:
+
+```
+HashMap:
+  pera = 3
+  manzana = 5
+  banana = 7
+  uva = 2
+  kiwi = 1
+LinkedHashMap:
+  pera = 3
+  manzana = 5
+  kiwi = 1
+  banana = 7
+  uva = 2
+TreeMap:
+  banana = 7
+  kiwi = 1
+  manzana = 5
+  pera = 3
+  uva = 2
+```
+
+`LinkedHashMap` reproduce exactamente el orden de inserción (`pera, manzana, kiwi,
+banana, uva`). `TreeMap` recorre en orden alfabético natural de `String`
+(`banana, kiwi, manzana, pera, uva`), sin importar el orden en que se insertaron. El
+orden de `HashMap` no coincide con ninguno de los dos — depende del *hash* de cada
+clave y de la capacidad interna de la tabla, y **no está garantizado por el contrato de
+la clase**: el orden real puede variar entre ejecuciones de la JVM, entre versiones de
+Java, o simplemente al agregar o quitar una clave. Nunca debe escribirse código que
+dependa del orden de iteración de un `HashMap`.
+
+## Operaciones básicas: `put`, `get`, `containsKey`, `containsValue`, `remove`
+
+| Operación | Qué hace | Retorna |
+|---|---|---|
+| `put(clave, valor)` | Inserta el par, o actualiza el valor si la clave ya existía. | El valor **anterior** asociado a esa clave, o `null` si la clave era nueva. |
+| `get(clave)` | Busca el valor asociado a una clave. | El valor, o `null` si la clave no existe. |
+| `containsKey(clave)` | Verifica si una clave está presente. | `boolean`. |
+| `containsValue(valor)` | Verifica si algún valor coincide (recorre todos los valores — O(n) incluso en `HashMap`). | `boolean`. |
+| `remove(clave)` | Elimina el par si existe. | El valor que tenía, o `null` si la clave no existía. |
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+public class OperacionesBasicas {
+    public static void main(String[] args) {
+        Map<String, Integer> inventario = new HashMap<>();
+        inventario.put("tornillos", 100);
+        inventario.put("tuercas", 50);
+        inventario.put("arandelas", 200);
+
+        System.out.println("put(\"tornillos\", 100) -> get(\"tornillos\") = " + inventario.get("tornillos"));
+
+        Integer previo = inventario.put("tuercas", 80);
+        System.out.println("put(\"tuercas\", 80) sobre clave existente -> valor anterior devuelto = " + previo);
+        System.out.println("get(\"tuercas\") ahora = " + inventario.get("tuercas"));
+
+        System.out.println("get(\"clavos\") (no existe) = " + inventario.get("clavos"));
+
+        System.out.println("containsKey(\"arandelas\") = " + inventario.containsKey("arandelas"));
+        System.out.println("containsKey(\"clavos\") = " + inventario.containsKey("clavos"));
+        System.out.println("containsValue(200) = " + inventario.containsValue(200));
+        System.out.println("containsValue(999) = " + inventario.containsValue(999));
+
+        Integer eliminado = inventario.remove("tornillos");
+        System.out.println("remove(\"tornillos\") devuelve = " + eliminado);
+        System.out.println("containsKey(\"tornillos\") tras remove = " + inventario.containsKey("tornillos"));
+
+        Integer eliminadoInexistente = inventario.remove("clavos");
+        System.out.println("remove(\"clavos\") (no existía) devuelve = " + eliminadoInexistente);
+
+        System.out.println("size() final = " + inventario.size());
+    }
+}
+```
+
+Salida real:
+
+```
+put("tornillos", 100) -> get("tornillos") = 100
+put("tuercas", 80) sobre clave existente -> valor anterior devuelto = 50
+get("tuercas") ahora = 80
+get("clavos") (no existe) = null
+containsKey("arandelas") = true
+containsKey("clavos") = false
+containsValue(200) = true
+containsValue(999) = false
+remove("tornillos") devuelve = 100
+containsKey("tornillos") tras remove = false
+remove("clavos") (no existía) devuelve = null
+size() final = 2
+```
+
+Dos detalles que suelen pasar desapercibidos: `put` sobre una clave existente **no crea
+un segundo par** — actualiza el valor y devuelve el que había antes (`50`, en el segundo
+`put` de arriba). Y `get` sobre una clave ausente no lanza excepción — devuelve `null`,
+lo que obliga a decidir explícitamente qué hacer con esa ausencia (la siguiente sección
+muestra una forma más segura con `getOrDefault`).
+
+## Métodos de conveniencia
+
+Más allá de `put`/`get`, `Map` incluye varios métodos que evitan escribir a mano el
+`if (containsKey(...))` que se necesitaría de otro modo. Son muy usados en código Java
+real y suelen enseñarse poco.
+
+### `getOrDefault` — leer sin arriesgarse a un `null`
+
+```java
+Map<String, Integer> stock = new HashMap<>();
+stock.put("mesas", 4);
+
+stock.getOrDefault("mesas", 0);   // no hace falta el default: existe
+stock.getOrDefault("sillas", 0);  // "sillas" no existe -> devuelve el default, 0
+```
+
+Salida real:
+
+```
+getOrDefault("mesas", 0) = 4
+getOrDefault("sillas", 0) = 0
+get("sillas") sin default = null
+```
+
+`getOrDefault` no modifica el mapa — si la clave no existe, sigue sin existir después de
+la llamada; solo cambia lo que se devuelve en ese caso.
+
+### `putIfAbsent` — insertar solo si la clave todavía no existe
+
+```java
+Map<String, String> config = new LinkedHashMap<>();
+config.put("modo", "produccion");
+
+config.putIfAbsent("modo", "debug");     // "modo" ya existe -> no lo pisa
+config.putIfAbsent("timeout", "30s");    // "timeout" no existe -> lo inserta
+```
+
+Salida real:
+
+```
+putIfAbsent("modo", "debug") con clave existente -> devuelve produccion, valor queda = produccion
+putIfAbsent("timeout", "30s") con clave nueva -> devuelve null, valor queda = 30s
+```
+
+A diferencia de `put`, que siempre sobrescribe, `putIfAbsent` solo inserta cuando la
+clave está ausente (o mapeada a `null`) — el valor `"produccion"` sobrevive intacto
+porque la clave `"modo"` ya estaba presente.
+
+### `computeIfAbsent` — construir estructuras de agrupamiento
+
+Este es el más útil de los cuatro y el que más se subestima: sirve para construir un
+`Map<K, List<V>>` (agrupar elementos por alguna característica) sin tener que comprobar
+a mano si la lista de cada clave ya existe.
+
+```java
+List<String> nombres = List.of("Ana", "Bruno", "Beatriz", "Carla", "Andres", "Carlos");
+Map<Character, List<String>> porInicial = new LinkedHashMap<>();
+
+for (String nombre : nombres) {
+    char inicial = nombre.charAt(0);
+    porInicial.computeIfAbsent(inicial, k -> new ArrayList<>()).add(nombre);
+}
+```
+
+Salida real:
+
+```
+Agrupados por inicial:
+  A -> [Ana, Andres]
+  B -> [Bruno, Beatriz]
+  C -> [Carla, Carlos]
+```
+
+`computeIfAbsent(clave, funcion)` revisa si `clave` ya está mapeada: si no lo está,
+ejecuta `funcion` (aquí, `k -> new ArrayList<>()`), guarda ese resultado como el nuevo
+valor, y lo devuelve; si ya estaba mapeada, simplemente devuelve el valor existente sin
+tocar `funcion`. Por eso encadenar `.add(nombre)` funciona siempre: la primera vez que
+aparece una inicial crea la lista vacía y le agrega el nombre; las siguientes veces
+reutiliza la misma lista y solo le agrega el nombre nuevo. Sin `computeIfAbsent`, el
+mismo bucle necesitaría escribir a mano:
+
+```java
+List<String> lista = porInicial.get(inicial);
+if (lista == null) {
+    lista = new ArrayList<>();
+    porInicial.put(inicial, lista);
+}
+lista.add(nombre);
+```
+
+### `merge` — combinar un valor nuevo con el existente
+
+```java
+Map<String, Integer> ventas = new LinkedHashMap<>();
+String[] productosVendidos = {"pan", "leche", "pan", "huevo", "pan", "leche"};
+
+for (String p : productosVendidos) {
+    ventas.merge(p, 1, Integer::sum);
+}
+```
+
+Salida real:
+
+```
+Conteo de ventas con merge:
+  pan -> 3
+  leche -> 2
+  huevo -> 1
+```
+
+`merge(clave, valor, funcion)` funciona así: si la clave no existe, la inserta con
+`valor` directamente (aquí, `1`). Si ya existe, reemplaza el valor actual por
+`funcion.apply(valorActual, valor)` — en este caso, `Integer::sum`, que suma
+`valorActual + 1`. Es la forma más compacta de acumular un conteo o un total por clave,
+y es exactamente el mecanismo detrás del contador de frecuencia de la siguiente sección.
+
+## Aplicación real: contador de frecuencia de palabras
+
+Un uso clásico de mapas: contar cuántas veces aparece cada palabra en un texto. La idea
+es la misma que el ejemplo de `merge` de arriba, aplicada palabra por palabra:
+
+```java
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+public class ContadorPalabras {
+    public static void main(String[] args) {
+        String texto = "el perro corre el gato duerme el perro ladra";
+        Map<String, Integer> frecuencia = new LinkedHashMap<>();
+
+        for (String palabra : texto.split(" ")) {
+            frecuencia.merge(palabra, 1, Integer::sum);
+        }
+
+        for (Map.Entry<String, Integer> e : frecuencia.entrySet()) {
+            System.out.println(e.getKey() + ": " + e.getValue());
+        }
+    }
+}
+```
+
+Salida real:
+
+```
+el: 3
+perro: 2
+corre: 1
+gato: 1
+duerme: 1
+ladra: 1
+```
+
+`"el"` aparece tres veces y `"perro"` dos — el resto, una sola vez. Se usó
+`LinkedHashMap` a propósito, para que el orden de salida sea el orden en que cada
+palabra apareció **por primera vez** en el texto (reproducible entre ejecuciones); con
+un `HashMap` el conteo sería idéntico, pero el orden de las líneas impresas no estaría
+garantizado. La misma técnica funciona con `getOrDefault` en vez de `merge`:
+`frecuencia.put(palabra, frecuencia.getOrDefault(palabra, 0) + 1);` hace exactamente lo
+mismo, con una línea más.
+
+## Vistas del mapa: `keySet()`, `values()`, `entrySet()`
+
+```java
+Map<String, Integer> precios = new LinkedHashMap<>();
+precios.put("cafe", 3);
+precios.put("te", 2);
+precios.put("jugo", 4);
+
+precios.keySet();    // solo las claves
+precios.values();    // solo los valores
+precios.entrySet();  // los pares clave-valor
+```
+
+Salida real:
+
+```
+keySet() = [cafe, te, jugo]
+values() = [3, 2, 4]
+entrySet() = [cafe=3, te=2, jugo=4]
+```
+
+`keySet()` devuelve un `Set<K>` (sin duplicados, porque las claves de un mapa ya son
+únicas); `values()` devuelve una `Collection<V>` (puede tener valores repetidos);
+`entrySet()` devuelve un `Set<Map.Entry<K, V>>`, donde cada `Map.Entry` es un par con
+`getKey()` y `getValue()` — es la forma más eficiente de recorrer un mapa cuando se
+necesitan ambos, clave y valor, porque no repite una búsqueda por cada clave como haría
+`for (K clave : mapa.keySet()) { mapa.get(clave); }`.
+
+### Las tres vistas están respaldadas por el mapa — no son copias
+
+Esto sorprende a quien no lo ha visto antes: `keySet()`, `values()` y `entrySet()` no
+devuelven una copia independiente — son **ventanas** hacia la misma estructura interna
+del mapa. Modificar la vista modifica el mapa:
+
+```java
+System.out.println("Antes: precios = " + precios);
+boolean removido = precios.keySet().remove("te");
+System.out.println("keySet().remove(\"te\") devuelve " + removido);
+System.out.println("Despues: precios = " + precios);
+System.out.println("containsKey(\"te\") = " + precios.containsKey("te"));
+```
+
+Salida real:
+
+```
+Antes: precios = {cafe=3, te=2, jugo=4}
+keySet().remove("te") devuelve true
+Despues: precios = {cafe=3, jugo=4}
+containsKey("te") = false
+```
+
+Remover `"te"` de la vista `keySet()` eliminó también el par `"te"=2` del mapa original
+`precios` — no fue necesario llamar `precios.remove("te")` directamente. Lo mismo
+ocurre con `values()` (aunque ahí `remove(valor)` borra la primera entrada que tenga ese
+valor) y con `entrySet()`. Esto es útil — por ejemplo, para filtrar un mapa con
+`mapa.entrySet().removeIf(e -> condicion)` — pero también es una fuente típica de bugs
+si no se tiene presente: modificar una vista mientras se recorre con un `for-each`
+lanza `ConcurrentModificationException`, igual que modificar cualquier otra colección
+durante su propio recorrido.
+
+## `TreeMap` con un `Comparator` personalizado
+
+Por defecto, `TreeMap` ordena las claves con su orden natural (`compareTo`, alfabético
+para `String`). Igual que con `TreeSet` o al ordenar una lista, se puede pasar un
+`Comparator` explícito al constructor para imponer cualquier otro criterio — la
+interfaz `Comparator<T>` y sus formas de construcción (lambdas, `Comparator.comparing`,
+encadenar con `thenComparing`) ya se explicaron en
+[Comparadores](/teaching/data-structures/1p/comparadores) y no se repiten aquí.
+
+```java
+Map<String, Integer> porLongitud = new TreeMap<>(
+    Comparator.comparingInt(String::length).thenComparing(Comparator.naturalOrder())
+);
+porLongitud.put("kiwi", 1);
+porLongitud.put("higo", 2);
+porLongitud.put("banana", 3);
+porLongitud.put("uva", 4);
+porLongitud.put("mango", 5);
+```
+
+Salida real:
+
+```
+uva (3 letras) -> 4
+higo (4 letras) -> 2
+kiwi (4 letras) -> 1
+mango (5 letras) -> 5
+banana (6 letras) -> 3
+```
+
+Las claves quedan ordenadas por longitud (`uva`, 3 letras, primero); entre `"higo"` y
+`"kiwi"`, ambas de 4 letras, el `thenComparing(Comparator.naturalOrder())` desempata
+alfabéticamente (`higo` antes que `kiwi`). Un detalle importante: el `Comparator` de un
+`TreeMap` decide **igualdad de claves**, no solo el orden de recorrido — si existiera
+otra clave de 4 letras que empatara también en el desempate alfabético, `put` la
+trataría como la misma clave y sobrescribiría el valor, aunque las cadenas fueran
+distintas según `equals`.
 
 ## Cuándo usar cada uno
 
-- Acceso rápido por clave, sin importar el orden → `HashMap`.
-- Recorrer en el mismo orden en que se insertaron las claves → `LinkedHashMap`.
-- Mantener las claves siempre ordenadas → `TreeMap`.
+| Necesitas... | Usa |
+|---|---|
+| Acceso rápido por clave, sin importar el orden. | `HashMap` |
+| Recorrer en el mismo orden en que se insertaron las claves (por ejemplo, para una salida reproducible o un caché LRU). | `LinkedHashMap` |
+| Mantener las claves siempre ordenadas, o pedir la mínima/máxima clave sin ordenar cada vez. | `TreeMap` |
+| Agrupar elementos por alguna característica en listas. | Cualquiera de los tres, con `computeIfAbsent`. |
+| Contar ocurrencias de algo. | Cualquiera de los tres, con `merge` o `getOrDefault`. |
 
-Un mapa es la estructura natural cuando el problema requiere buscar por un identificador
-en vez de por posición — por ejemplo, buscar los datos de un estudiante por su cédula,
-en vez de recorrer una lista comparando uno por uno.
+## Errores frecuentes
+
+- **"`HashMap` recorre las claves en el orden en que las inserté."** Falso en general —
+  la sección "Mismo contenido, tres órdenes distintos" lo muestra con datos reales: el
+  orden de `HashMap` no coincidió ni con el de inserción ni con el alfabético. Si el
+  orden importa, usar `LinkedHashMap` o `TreeMap`.
+- **"`get(clave)` lanza una excepción si la clave no existe."** No — devuelve `null`.
+  Confundir esto con, por ejemplo, el acceso fuera de rango de un arreglo (que sí lanza
+  excepción) es un error común; conviene usar `getOrDefault` cuando un `null` sería
+  problemático más adelante en el código.
+- **"`keySet()`, `values()` y `entrySet()` devuelven copias, así que modificarlas es
+  seguro."** Falso — son vistas respaldadas por el mapa. La sección de vistas lo
+  demuestra: `keySet().remove(...)` borra también el par correspondiente del mapa
+  original.
+- **"`putIfAbsent` es lo mismo que `put`."** No — `put` siempre sobrescribe el valor de
+  una clave existente; `putIfAbsent` solo inserta si la clave está ausente (o mapeada a
+  `null`), y deja intacto cualquier valor ya presente.
+- **"`containsValue` es tan rápido como `containsKey` en un `HashMap`."** Falso —
+  `containsKey` usa el hash de la clave para ir directo al balde correspondiente, O(1)
+  promedio; `containsValue` no tiene ese atajo y debe recorrer todos los valores, O(n),
+  sin importar qué implementación de `Map` se use.
+
+## Comprueba lo aprendido
+
+- Sobre un `TreeMap<String, Integer>` vacío, se insertan en este orden: `("dado", 1)`,
+  `("ancla", 2)`, `("barco", 3)`, `("cesto", 4)`. ¿En qué orden aparecen las claves al
+  recorrer `entrySet()`? ¿Cambiaría la respuesta si en cambio fuera un `HashMap`?
+- Dado `Map<String, Integer> m = new HashMap<>();` y luego `m.put("x", 5);`, ¿qué
+  devuelve `m.put("x", 9)`? ¿Y qué devuelve `m.get("x")` inmediatamente después?
+- Se quiere construir un `Map<Integer, List<String>>` que agrupe una lista de palabras
+  según su longitud. Escribe el bucle usando `computeIfAbsent`, y explica qué pasaría
+  si en cambio se usara `putIfAbsent` con una lista nueva en cada iteración.
+- ¿Por qué `mapa.entrySet()` es más eficiente que `for (K clave : mapa.keySet())` seguido
+  de `mapa.get(clave)` dentro del bucle, cuando se necesitan tanto la clave como el
+  valor?
+- Explica, con tus propias palabras, por qué `mapa.keySet().remove(clave)` también
+  elimina el par del mapa original, en vez de fallar o no tener efecto.
+
+## Resumen
+
+- Un mapa asocia claves únicas a valores; no es un `Collection<E>` porque su unidad es
+  un par, no un elemento.
+- `HashMap` no garantiza orden de recorrido (y ese orden puede variar entre ejecuciones);
+  `LinkedHashMap` preserva el orden de inserción con el mismo costo por operación;
+  `TreeMap` mantiene las claves siempre ordenadas, a costa de O(log n) en vez de O(1).
+- `put`/`get`/`containsKey`/`remove` son las operaciones base; `getOrDefault`,
+  `putIfAbsent`, `computeIfAbsent` y `merge` evitan escribir a mano el
+  `if (containsKey(...))` que esas operaciones necesitarían de otro modo — y son
+  extremadamente comunes en código Java real, sobre todo `computeIfAbsent` para agrupar
+  y `merge` para contar.
+- `keySet()`, `values()` y `entrySet()` son **vistas** respaldadas por el mapa, no
+  copias: modificarlas modifica el mapa original.
+- `TreeMap` acepta un `Comparator` personalizado igual que `TreeSet` o que ordenar una
+  lista — ver [Comparadores](/teaching/data-structures/1p/comparadores) para el detalle
+  de esa interfaz.

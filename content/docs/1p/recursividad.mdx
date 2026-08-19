@@ -37,12 +37,462 @@ static int factorial(int n) {
 `factorial(3)` se resuelve como `3 * (2 * (1 * factorial(0)))`, y `factorial(0)` retorna `1`
 directamente — sin ese caso base, la llamada nunca terminaría.
 
-## Por qué importa
+### Traza real de `factorial(4)`
 
-Hay problemas que son recursivos por naturaleza — se definen en términos de sí mismos.
-La sucesión de Fibonacci es el ejemplo típico: cada término es la suma de los dos
-anteriores (`fibonacci(n) = fibonacci(n-1) + fibonacci(n-2)`, con `fibonacci(1) = 0` y
-`fibonacci(2) = 1` como casos base). El mismo patrón aparece en estructuras naturales
-—ramificación de árboles, espirales de conchas, distribución de semillas— y es la base
-para operar estructuras de datos que son ellas mismas recursivas, como los árboles y los
-grafos que se cubren en el segundo parcial.
+Cada llamada recursiva **entra** (se apila) antes de tener un resultado, y solo **retorna**
+(se desapila) cuando su propia llamada recursiva ya terminó. Para verlo de verdad, no
+solo describirlo, esta es la misma implementación con una impresión al entrar y otra al
+retornar:
+
+```java
+static int factorial(int n) {
+    System.out.println("entra factorial(" + n + ")");
+    int resultado;
+    if (n == 0) {
+        resultado = 1;
+    } else {
+        resultado = n * factorial(n - 1);
+    }
+    System.out.println("retorna factorial(" + n + ") = " + resultado);
+    return resultado;
+}
+```
+
+Salida real al ejecutar `factorial(4)`:
+
+```text
+entra factorial(4)
+entra factorial(3)
+entra factorial(2)
+entra factorial(1)
+entra factorial(0)
+retorna factorial(0) = 1
+retorna factorial(1) = 1
+retorna factorial(2) = 2
+retorna factorial(3) = 6
+retorna factorial(4) = 24
+resultado final: 24
+```
+
+Nótese la forma de "V": primero se **baja** hasta el caso base (cuatro `entra` seguidos,
+sin que ninguno retorne todavía — cada uno queda esperando en la pila de llamadas) y
+recién ahí se **sube**, calculando cada multiplicación con el resultado que acaba de
+volver. El mismo patrón, como árbol de llamadas:
+
+```text
+factorial(4)
+ └─ factorial(3)
+     └─ factorial(2)
+         └─ factorial(1)
+             └─ factorial(0) = 1          (caso base, no llama a nadie)
+             = 1 * 1  = 1
+         = 2 * 1  = 2
+     = 3 * 2  = 6
+ = 4 * 6  = 24
+```
+
+Como `factorial` solo hace **una** llamada recursiva por invocación, el árbol es en
+realidad una lista: una única rama que baja y vuelve a subir. Esto cambia radicalmente
+en la siguiente sección.
+
+## Fibonacci: recursión múltiple
+
+La sucesión de Fibonacci se define en términos de sí misma: cada término es la suma de
+los dos anteriores, con dos casos base.
+
+```
+fibonacci(n) = fibonacci(n-1) + fibonacci(n-2)
+fibonacci(1) = 0   (caso base)
+fibonacci(2) = 1   (caso base)
+```
+
+A diferencia de `factorial`, aquí cada llamada dispara **dos** llamadas recursivas, no
+una — por eso este patrón se llama **recursión múltiple** (o recursión en árbol, en vez
+de recursión simple, la de una sola llamada por invocación como `factorial`). Traducido
+a Java:
+
+```java
+static long fibonacci(int n) {
+    if (n == 1) return 0;
+    if (n == 2) return 1;
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+```
+
+### Árbol de llamadas de `fibonacci(5)`
+
+Con el mismo truco de imprimir al entrar y al retornar, esta es la salida real de
+`fibonacci(5)`:
+
+```text
+entra fibonacci(5)
+entra fibonacci(4)
+entra fibonacci(3)
+entra fibonacci(2)
+retorna fibonacci(2) = 1
+entra fibonacci(1)
+retorna fibonacci(1) = 0
+retorna fibonacci(3) = 1
+entra fibonacci(2)
+retorna fibonacci(2) = 1
+retorna fibonacci(4) = 2
+entra fibonacci(3)
+entra fibonacci(2)
+retorna fibonacci(2) = 1
+entra fibonacci(1)
+retorna fibonacci(1) = 0
+retorna fibonacci(3) = 1
+retorna fibonacci(5) = 3
+resultado final: 3
+```
+
+Contando cada `entra` en esa salida real hay **9 llamadas** en total para resolver
+`fibonacci(5)`. Como árbol:
+
+```text
+fibonacci(5)
+├─ fibonacci(4)
+│   ├─ fibonacci(3)
+│   │   ├─ fibonacci(2) = 1   (caso base)
+│   │   └─ fibonacci(1) = 0   (caso base)
+│   │   = 1
+│   └─ fibonacci(2) = 1       (caso base)
+│   = 2
+└─ fibonacci(3)
+    ├─ fibonacci(2) = 1       (caso base)
+    └─ fibonacci(1) = 0       (caso base)
+    = 1
+= 3
+```
+
+El detalle importante: `fibonacci(3)` aparece **dos veces** como llamada independiente
+(una vez colgando de `fibonacci(4)`, otra vez colgando directamente de `fibonacci(5)`), y
+`fibonacci(2)` aparece **tres veces**. Ninguna de esas repeticiones reutiliza el
+resultado de la anterior — cada una vuelve a bajar todo el árbol desde cero. Con `n=5`
+son solo 9 llamadas y no se nota, pero el problema crece muy rápido.
+
+### El costo real de la recursión ingenua
+
+Para medirlo de verdad (no estimarlo) se agrega un contador global que se incrementa en
+cada entrada al método:
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+public class FibonacciConteo {
+    static int llamadasIngenuas = 0;
+    static int llamadasMemo = 0;
+
+    // fibonacci(1) = 0, fibonacci(2) = 1 — misma convención que el resto de la página
+    static long fibonacciIngenuo(int n) {
+        llamadasIngenuas++;
+        if (n == 1) return 0;
+        if (n == 2) return 1;
+        return fibonacciIngenuo(n - 1) + fibonacciIngenuo(n - 2);
+    }
+
+    static long fibonacciMemo(int n, Map<Integer, Long> memo) {
+        llamadasMemo++;
+        if (n == 1) return 0;
+        if (n == 2) return 1;
+        if (memo.containsKey(n)) return memo.get(n);
+        long resultado = fibonacciMemo(n - 1, memo) + fibonacciMemo(n - 2, memo);
+        memo.put(n, resultado);
+        return resultado;
+    }
+
+    public static void main(String[] args) {
+        int[] valores = {5, 10, 20, 30};
+        for (int n : valores) {
+            llamadasIngenuas = 0;
+            llamadasMemo = 0;
+            long r1 = fibonacciIngenuo(n);
+            long r2 = fibonacciMemo(n, new HashMap<>());
+            System.out.println("n=" + n + " fibonacci(n)=" + r1
+                + " (memo=" + r2 + ")"
+                + " llamadas ingenuas=" + llamadasIngenuas
+                + " llamadas memo=" + llamadasMemo);
+        }
+    }
+}
+```
+
+Salida real:
+
+```text
+n=5 fibonacci(n)=3 (memo=3) llamadas ingenuas=9 llamadas memo=7
+n=10 fibonacci(n)=34 (memo=34) llamadas ingenuas=109 llamadas memo=17
+n=20 fibonacci(n)=4181 (memo=4181) llamadas ingenuas=13529 llamadas memo=37
+n=30 fibonacci(n)=514229 (memo=514229) llamadas ingenuas=1664079 llamadas memo=57
+```
+
+| `n` | `fibonacci(n)` | Llamadas — ingenua | Llamadas — memoizada |
+|---|---|---|---|
+| 5 | 3 | 9 | 7 |
+| 10 | 34 | 109 | 17 |
+| 20 | 4181 | 13 529 | 37 |
+| 30 | 514 229 | **1 664 079** | 57 |
+
+Ambas versiones calculan exactamente el mismo resultado (`514229` para `n=30`) — la
+diferencia es cuánto trabajo hacen para llegar ahí. La versión ingenua pasó de 109
+llamadas (`n=10`) a más de 1.6 millones (`n=30`) por los mismos árboles repetidos que se
+ven arriba: sin memoria de lo ya calculado, cada nodo del árbol se vuelve a expandir
+completo cada vez que se necesita. Esto es lo que se conoce como crecimiento
+**exponencial** (`O(2ⁿ)` en el peor caso) — la memoizada, en cambio, calcula cada
+`fibonacci(k)` una única vez y de ahí en adelante lo reutiliza, quedando en trabajo
+**lineal** (`O(n)` llamadas).
+
+### Memoización: recordar en vez de recalcular
+
+`fibonacciMemo` es el mismo método, con dos líneas agregadas: antes de recalcular,
+revisa si `n` ya está en el mapa (`memo.containsKey(n)`); si no está, calcula y **guarda**
+el resultado (`memo.put(n, resultado)`) antes de retornar. Esa es la idea completa de la
+**memoización**: seguir siendo recursivo, pero no volver a resolver un subproblema que ya
+se resolvió antes. (La alternativa sin recursión, construir la tabla de abajo hacia
+arriba con un arreglo, es **programación dinámica** *bottom-up* — mismo principio, sin
+pila de llamadas de por medio.)
+
+## Recursión de cola (tail recursion)
+
+En `factorial`, la multiplicación ocurre **después** de que la llamada recursiva
+retorna — el método todavía tiene trabajo pendiente (`n * ...`) cuando hace la llamada:
+
+```java
+static long factorial(int n) {
+    if (n == 0) return 1;
+    return n * factorial(n - 1); // queda pendiente la multiplicación
+}
+```
+
+Una versión **de cola** mueve ese trabajo pendiente a un parámetro **acumulador**, de
+modo que la llamada recursiva es literalmente lo último que el método hace — no queda
+nada pendiente después de que retorne:
+
+```java
+static long factorialCola(int n, long acumulador) {
+    if (n == 0) return acumulador;
+    return factorialCola(n - 1, n * acumulador); // nada pendiente después de esta llamada
+}
+```
+
+```text
+factorial(10) = 3628800
+factorialCola(10, 1) = 3628800
+```
+
+Ambas dan el mismo resultado real (`3628800`). En varios lenguajes (Scheme, Kotlin con
+`tailrec`, Scala con `@tailrec`) el compilador detecta este patrón y lo convierte en un
+bucle, reutilizando el mismo marco de pila en vez de apilar uno nuevo por llamada — eso
+es la **optimización de llamadas de cola** (*tail-call optimization*, TCO).
+
+**Java no hace TCO.** Esto no es una opinión: se puede comprobar corriendo la versión de
+cola con un `n` enorme y viendo si igual desborda la pila.
+
+```java
+static long factorialCola(int n, long acumulador) {
+    if (n == 0) return acumulador;
+    return factorialCola(n - 1, n * acumulador);
+}
+// llamada: factorialCola(5_000_000, 1)
+```
+
+Resultado real de esa llamada:
+
+```text
+StackOverflowError incluso en la version de cola (Java no hace TCO)
+```
+
+Con `n = 5_000_000`, la versión de cola desborda la pila exactamente igual que lo haría
+la versión no-de-cola — la JVM sigue apilando un marco nuevo por cada llamada, sin
+reconocer ni reutilizar nada. En Java, escribir una versión "de cola" es, cuanto mucho,
+una cuestión de estilo y claridad (deja explícito el estado acumulado en vez de
+diferirlo), pero **no** es una garantía de que el programa vaya a soportar entradas más
+grandes sin desbordarse. Si `n` puede ser grande de verdad, la solución en Java es
+convertir la recursión en un bucle explícito (`for`), no confiar en que el compilador la
+optimice.
+
+## Backtracking: explorar y deshacer
+
+El **backtracking** es un patrón recursivo para explorar todas las combinaciones
+posibles de una decisión: en cada paso se **prueba** una opción, se sigue explorando
+recursivamente a partir de ella y, al volver, se **deshace** esa opción antes de probar
+la siguiente — de modo que cada rama del árbol de decisiones empieza desde el mismo
+estado limpio.
+
+Generar todos los subconjuntos de un conjunto de `n` elementos es un ejemplo directo:
+para cada elemento, la decisión es binaria — **incluirlo** o **no incluirlo**.
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+public class Subconjuntos {
+    static void generar(String[] elementos, int indice, List<String> actual) {
+        if (indice == elementos.length) {
+            System.out.println(actual);
+            return;
+        }
+        // Rama 1: no incluir elementos[indice]
+        generar(elementos, indice + 1, actual);
+        // Rama 2: incluir elementos[indice]
+        actual.add(elementos[indice]);
+        generar(elementos, indice + 1, actual);
+        actual.remove(actual.size() - 1); // deshacer antes de volver (backtrack)
+    }
+
+    public static void main(String[] args) {
+        String[] elementos = {"A", "B", "C"};
+        generar(elementos, 0, new ArrayList<>());
+    }
+}
+```
+
+Salida real, completa, para `{"A", "B", "C"}`:
+
+```text
+[]
+[C]
+[B]
+[B, C]
+[A]
+[A, C]
+[A, B]
+[A, B, C]
+```
+
+Son exactamente `2³ = 8` subconjuntos, incluyendo el vacío `[]` y el conjunto completo
+`[A, B, C]` — con `n` elementos siempre son `2ⁿ` subconjuntos, porque cada uno de los `n`
+elementos duplica el número de combinaciones posibles.
+
+La línea clave es la última: `actual.remove(actual.size() - 1)`. Sin ella, `actual`
+seguiría acumulando elementos de ramas que ya se terminaron de explorar y el resto de
+las combinaciones saldría mal (por ejemplo, `B` seguiría llevando `C` pegado incluso en
+la rama donde `C` no debía incluirse). Ese "deshacer antes de volver" es lo que distingue
+al backtracking de una recursión que simplemente construye una estructura sin
+retroceder: la misma lista `actual` se reutiliza para las `2ⁿ` combinaciones, en vez de
+crear una copia nueva en cada rama.
+
+## Cuando la recursión falla: `StackOverflowError`
+
+Cada llamada recursiva agrega un marco a la pila de llamadas de la JVM. Si nunca se
+llega a un caso base, esos marcos se siguen apilando hasta agotar la memoria reservada
+para esa pila — en ese momento la JVM lanza un `StackOverflowError` real, no un
+`RuntimeException` capturable "por las buenas" en el flujo normal, pero sí un
+`Error` que se puede atrapar con `catch` para que el resto del programa siga vivo:
+
+```java
+public class DesbordamientoDemo {
+    static int profundidad = 0;
+
+    static void sinCasoBase() {
+        profundidad++;
+        sinCasoBase(); // nunca se acerca a ningún caso base
+    }
+
+    public static void main(String[] args) {
+        try {
+            sinCasoBase();
+        } catch (StackOverflowError e) {
+            System.out.println("StackOverflowError capturado tras aproximadamente "
+                + profundidad + " llamadas anidadas");
+        }
+        System.out.println("el programa sigue vivo despues de capturar el error");
+    }
+}
+```
+
+Salida real de una ejecución:
+
+```text
+StackOverflowError capturado tras aproximadamente 21928 llamadas anidadas
+el programa sigue vivo despues de capturar el error
+```
+
+Ese número (`21928` en esta ejecución particular) **no es una constante del lenguaje**:
+depende del tamaño de la pila configurado para la JVM (`-Xss`), de cuánto espacio ocupa
+cada marco de este método en particular, y hasta del sistema operativo — otra ejecución,
+otra máquina, u otro método con más variables locales por llamada, puede desbordarse con
+una profundidad distinta. Lo que sí es constante es la conclusión: la recursión sin caso
+base no es un bucle infinito "gratis" como `while(true)` — tiene un límite real y
+relativamente bajo (miles a pocas decenas de miles de llamadas es típico, no millones),
+y lo alcanza como un error, no como una salida ordenada.
+
+## Recursividad y estructuras de datos recursivas
+
+Hay problemas que son recursivos por naturaleza — se definen en términos de sí mismos, como
+Fibonacci arriba. El mismo patrón aparece en estructuras naturales —ramificación de
+árboles, espirales de conchas, distribución de semillas— y, más importante para este
+curso, es la base para operar estructuras de datos que son ellas mismas recursivas: un
+árbol es, por definición, un nodo con una lista de subárboles (cada uno, a su vez, un
+árbol más pequeño), así que casi todo algoritmo sobre árboles y grafos —recorridos,
+búsqueda, cálculo de altura o profundidad— se escribe naturalmente como recursión. Ver
+[Árboles](/teaching/data-structures/2p/arboles) y
+[Grafos](/teaching/data-structures/2p/grafos) en el segundo parcial.
+
+También la relación inversa es real y ya se explicó en
+[Pilas y colas](/teaching/data-structures/1p/pilas-colas#pilas-y-recursividad): cada
+llamada recursiva se apila esperando a que la siguiente termine, con la misma disciplina
+LIFO de una pila — solo que esa pila la administra la JVM, no el programador. De hecho,
+cualquier método recursivo se puede reescribir de forma iterativa manejando una pila
+explícita a mano; eso es exactamente lo que la JVM hace por debajo con la pila de
+llamadas.
+
+## Errores frecuentes
+
+- **"Una recursión sin caso base entra en un bucle infinito."** No exactamente: entra en
+  un bucle que se corta solo cuando se agota la pila de llamadas, lanzando
+  `StackOverflowError` — es un error, con una profundidad límite real (miles de llamadas
+  típicamente), no una ejecución que sigue para siempre como `while(true)`.
+- **"La recursión de cola en Java se optimiza automáticamente, igual que en otros
+  lenguajes."** Falso — se verificó arriba: `factorialCola` con `n = 5_000_000` también
+  desborda la pila. Java no implementa *tail-call optimization*; escribir la versión de
+  cola es una cuestión de estilo, no una garantía de rendimiento ni de profundidad
+  soportada.
+- **"Fibonacci recursivo es lento porque la recursión es lenta."** Falso — la versión
+  memoizada de esta misma página también es recursiva y resuelve `fibonacci(30)` en 57
+  llamadas, no en 1.6 millones. Lo lento es recalcular subproblemas ya resueltos, no el
+  hecho de usar recursión.
+- **"Si el backtracking no deshace el cambio antes de volver, el resultado final es el
+  mismo, solo un poco menos prolijo."** Falso — se vio en `Subconjuntos`: sin
+  `actual.remove(...)`, las ramas siguientes heredan elementos de ramas ya cerradas y las
+  combinaciones que se imprimen quedan incorrectas, no solo "desprolijas".
+
+## Comprueba lo aprendido
+
+- Traza a mano `factorial(5)`: ¿en qué orden entran las llamadas y en qué orden
+  retornan? ¿Cuál es la cadena de multiplicaciones final?
+- Usando la convención de esta página (`fibonacci(1) = 0`, `fibonacci(2) = 1`), calcula
+  `fibonacci(6)` a mano y dibuja su árbol de llamadas completo (todas las llamadas, sin
+  memoización) — luego cuenta cuántas llamadas totales tiene. ¿Cómo se compara esa
+  cantidad con las 9 llamadas de `fibonacci(5)` que se contaron en esta página?
+- Convierte a forma de cola (con acumulador) un método recursivo que sume los dígitos de
+  un número entero positivo (por ejemplo, `sumaDigitos(1234)` debería retornar `10`).
+- En `Subconjuntos`, ¿qué pasaría si la línea `actual.remove(actual.size() - 1)` se
+  moviera fuera del método, después de la llamada a `generar(...)` en `main`, en vez de
+  dejarla al final de cada llamada recursiva? Justifica con el árbol de llamadas.
+- ¿Por qué la profundidad exacta a la que ocurre un `StackOverflowError` no es un número
+  fijo que se pueda memorizar como "el límite de Java"?
+
+## Resumen
+
+- Todo método recursivo necesita un **caso base** (detiene la recursión) y una
+  **llamada recursiva** que se acerque a él — sin el primero, la recursión termina en
+  `StackOverflowError`, no en un bucle infinito silencioso.
+- La recursión **simple** (una llamada recursiva por invocación, como `factorial`) traza
+  una sola rama que baja y vuelve a subir. La recursión **múltiple** (varias llamadas por
+  invocación, como Fibonacci) traza un árbol que puede crecer exponencialmente si hay
+  subproblemas repetidos.
+- La **memoización** guarda el resultado de cada subproblema la primera vez que se
+  calcula, evitando recalcularlo — en los ejemplos medidos de esta página, convirtió
+  1 664 079 llamadas (Fibonacci ingenuo, `n=30`) en 57 (memoizado), con el mismo
+  resultado exacto.
+- La **recursión de cola** (llamada recursiva como última acción, con acumulador) es una
+  optimización real en varios lenguajes, pero **no en Java** — se comprobó que también
+  desborda la pila para entradas grandes.
+- El **backtracking** prueba una opción, explora recursivamente y **deshace** esa opción
+  antes de probar la siguiente — omitir el paso de deshacer rompe las ramas siguientes,
+  no solo "ensucia" el resultado.
+- La recursión y la pila de llamadas están directamente ligadas (ver
+  [Pilas y colas](/teaching/data-structures/1p/pilas-colas)), y es la herramienta natural
+  para operar las estructuras de datos recursivas del segundo parcial: árboles y grafos.

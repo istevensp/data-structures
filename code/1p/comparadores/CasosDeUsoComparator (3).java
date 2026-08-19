@@ -1,3 +1,14 @@
+// Cuatro casos de uso reales de Comparator con la API moderna
+// (Comparator.comparingX + lambdas), uno por cada demo separada abajo — el
+// mismo criterio (envejecer un objeto con .sort(...)) aplicado a cuatro
+// dominios distintos (inventario, notas, vuelos, fechas de registro) para
+// mostrar que la técnica no cambia, solo el campo que se compara.
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 //////////////////////////////////////////////////////////////
 //1. Sistemas de Gestión de Inventarios
 //Contexto: En un sistema de inventarios, los productos pueden necesitar ser ordenados por diferentes criterios, como:
@@ -23,7 +34,7 @@ class Producto {
     }
 }
 
-public class Main {
+class DemoOrdenarProductosPorPrecio {
     public static void main(String[] args) {
         List<Producto> productos = new ArrayList<>();
         productos.add(new Producto("Laptop", 1200.50));
@@ -66,14 +77,15 @@ class Estudiante {
     }
 }
 
-public class Main {
+class DemoOrdenarEstudiantesPorCalificacion {
     public static void main(String[] args) {
         List<Estudiante> estudiantes = new ArrayList<>();
         estudiantes.add(new Estudiante("Alice", 85.5));
         estudiantes.add(new Estudiante("Bob", 92.0));
         estudiantes.add(new Estudiante("Charlie", 78.3));
 
-        // Ordenar por calificación descendente
+        // Ordenar por calificación descendente: e2 antes que e1 invierte
+        // el signo del resultado, así el mayor queda primero.
         estudiantes.sort((e1, e2) -> Double.compare(e2.calificacion, e1.calificacion));
         System.out.println("Estudiantes ordenados por calificación: " + estudiantes);
     }
@@ -109,7 +121,7 @@ class Vuelo {
     }
 }
 
-public class Main {
+class DemoOrdenarVuelosPorDuracion {
     public static void main(String[] args) {
         List<Vuelo> vuelos = new ArrayList<>();
         vuelos.add(new Vuelo("AM123", 180));
@@ -137,8 +149,6 @@ public class Main {
 //Ejemplo: Ordenar Registros por Fecha
 //////////////////////////////////////////////////////////////
 
-import java.time.LocalDate;
-
 class Registro {
     String descripcion;
     LocalDate fecha;
@@ -154,14 +164,16 @@ class Registro {
     }
 }
 
-public class Main {
+class DemoOrdenarRegistrosPorFecha {
     public static void main(String[] args) {
         List<Registro> registros = new ArrayList<>();
         registros.add(new Registro("Evento A", LocalDate.of(2023, 5, 20)));
         registros.add(new Registro("Evento B", LocalDate.of(2022, 11, 15)));
         registros.add(new Registro("Evento C", LocalDate.of(2024, 3, 10)));
 
-        // Ordenar por fecha ascendente
+        // Ordenar por fecha ascendente — LocalDate ya implementa Comparable,
+        // así que Comparator.comparing() lo usa directamente sin necesitar
+        // comparingInt/comparingDouble.
         registros.sort(Comparator.comparing(r -> r.fecha));
         System.out.println("Registros ordenados por fecha: " + registros);
     }

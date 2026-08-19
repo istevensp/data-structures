@@ -1,6 +1,11 @@
+// Implementación general de búsqueda binaria, seguida por 5 demos que
+// muestran cómo se comporta con distintas posiciones del valor buscado y
+// distintos tamaños de arreglo (par/impar) — todas usan exactamente el
+// mismo algoritmo, solo cambian los datos de entrada.
+
 /**
 Ejemplo en Java
-A continuación, te muestro un ejemplo de cómo implementar la búsqueda binaria en Java.
+A continuación, se muestra un ejemplo de cómo implementar la búsqueda binaria en Java.
 **/
 
 public class BusquedaBinaria {
@@ -47,13 +52,14 @@ public class BusquedaBinaria {
 }
 
 
-/** Código para los Casos de Búsqueda Binaria
+/** Casos de Búsqueda Binaria
 
 Caso 1: Valor en el Medio
-Este caso muestra cómo se comporta la búsqueda binaria cuando el valor buscado está justo en el medio del arreglo**/
+Este caso muestra cómo se comporta la búsqueda binaria cuando el valor buscado está
+justo en el medio del arreglo **/
 
 
-public class BusquedaBinariaCaso1 {
+class BusquedaBinariaCaso1 {
     public static int busquedaBinaria(int[] arr, int valorBuscado) {
         int inicio = 0;
         int fin = arr.length - 1;
@@ -91,10 +97,10 @@ public class BusquedaBinariaCaso1 {
 
 
 /** Caso 2: Valor en la Mitad Derecha
-En este caso, el valor buscado está en la mitad derecha del arreglo.**/
+En este caso, el valor buscado está en la mitad derecha del arreglo. **/
 
 
-public class BusquedaBinariaCaso2 {
+class BusquedaBinariaCaso2 {
     public static int busquedaBinaria(int[] arr, int valorBuscado) {
         int inicio = 0;
         int fin = arr.length - 1;
@@ -132,10 +138,10 @@ public class BusquedaBinariaCaso2 {
 
 
 /**Caso 3: Valor en la Mitad Izquierda
-En este caso, el valor buscado está en la mitad izquierda del arreglo.**/
+En este caso, el valor buscado está en la mitad izquierda del arreglo. **/
 
 
-public class BusquedaBinariaCaso3 {
+class BusquedaBinariaCaso3 {
     public static int busquedaBinaria(int[] arr, int valorBuscado) {
         int inicio = 0;
         int fin = arr.length - 1;
@@ -171,12 +177,13 @@ public class BusquedaBinariaCaso3 {
     }
 }
 
-/**Caso General 2: Tamaño Par e Impar
-Aquí tienes ejemplos para un arreglo con tamaño par y otro con tamaño impar, para ver cómo se comporta la búsqueda binaria en cada uno.
+/**Caso general: tamaño par e impar
+Ejemplos para un arreglo con tamaño par y otro con tamaño impar, para ver cómo se
+comporta la búsqueda binaria en cada uno.
 
-Arreglo de Tamaño Impar**/
+Arreglo de tamaño impar**/
 
-public class BusquedaBinariaTamañoImpar {
+class BusquedaBinariaTamañoImpar {
     public static int busquedaBinaria(int[] arr, int valorBuscado) {
         int inicio = 0;
         int fin = arr.length - 1;
@@ -213,9 +220,9 @@ public class BusquedaBinariaTamañoImpar {
 }
 
 
-/**Arreglo de Tamaño Par**/
+/**Arreglo de tamaño par**/
 
-public class BusquedaBinariaTamañoPar {
+class BusquedaBinariaTamañoPar {
     public static int busquedaBinaria(int[] arr, int valorBuscado) {
         int inicio = 0;
         int fin = arr.length - 1;
@@ -252,9 +259,9 @@ public class BusquedaBinariaTamañoPar {
 }
 
 
-/**Código General para Búsqueda Binaria (incluyendo todos los casos)**/
+/**Código general para búsqueda binaria (incluyendo todos los casos)**/
 
-public class BusquedaBinariaGeneral {
+class BusquedaBinariaGeneral {
 
     // Método general de búsqueda binaria que cubre todos los casos
     public static int busquedaBinaria(int[] arr, int valorBuscado) {

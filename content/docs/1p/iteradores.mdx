@@ -9,17 +9,26 @@ topic: iteradores
 
 Un iterador es una abstracción que permite recorrer los elementos de una colección sin
 que quien la usa tenga que conocer su estructura interna (por ejemplo, sin instanciar un
-nodo viajero manualmente sobre una lista enlazada). `ArrayList` y `LinkedList` se
-recorren con exactamente el mismo código, aunque por dentro sean muy distintas.
+nodo viajero manualmente sobre una lista enlazada, cuyas variantes se detallan en
+[Listas](/teaching/data-structures/1p/listas)). `ArrayList` (arreglo contiguo) y
+`LinkedList` (nodos enlazados) se recorren con exactamente el mismo código, aunque por
+dentro sean muy distintas — ese es el punto: el código que recorre no necesita cambiar
+aunque la estructura sí.
 
 ## La interfaz `Iterator<E>`
 
-Toda clase que la implementa debe definir dos métodos:
+Toda clase que la implementa debe definir al menos dos métodos:
 
 ```java
 boolean hasNext();  // ¿hay un siguiente elemento?
 E next();            // devuelve el elemento actual y avanza el cursor
 ```
+
+| Método | Qué hace |
+|---|---|
+| `hasNext()` | Consulta si queda al menos un elemento por visitar, sin avanzar el cursor. |
+| `next()` | Devuelve el elemento en el que está el cursor **y lo avanza** al siguiente. Lanza `NoSuchElementException` si no hay elementos (por eso siempre se llama después de comprobar `hasNext()`). |
+| `remove()` | Opcional (método `default` en la interfaz): remueve de la colección el último elemento devuelto por `next()`. Si no se sobreescribe, lanza `UnsupportedOperationException`. |
 
 Patrón de recorrido estándar:
 
@@ -30,25 +39,364 @@ while (it.hasNext()) {
 }
 ```
 
-El método `iterator()` debe devolver **una instancia nueva cada vez** que se lo invoca —
-nunca el mismo iterador dos veces — porque cada instancia guarda su propio estado
-(en qué punto del recorrido va). Reutilizar un iterador entre dos recorridos distintos
-causaría conflictos.
+El `for-each` de Java (`for (E e : coleccion) { ... }`) es exactamente ese mismo patrón
+escrito por el compilador — azúcar sintáctico sobre `iterator()`/`hasNext()`/`next()`, no
+un mecanismo distinto.
 
-## Cómo implementar un iterador propio
+## Implementar `Iterable<T>`/`Iterator<T>` desde cero
 
-1. **Clase que implementa `Iterator<E>`** — una clase con nombre, con su propia
-   implementación de `hasNext()`/`next()`.
-2. **Clase anónima** — se define directamente dentro del método `iterator()`, sin crear
-   un archivo aparte.
+Para que una estructura propia soporte el `for-each` de Java, no basta con tener un
+método `next()` — hace falta implementar la interfaz `Iterable<T>`, cuyo único método,
+`iterator()`, devuelve un `Iterator<T>`. El compilador traduce
+`for (T x : miEstructura)` a exactamente el patrón `while (it.hasNext())` de arriba,
+invocando primero `miEstructura.iterator()`.
 
-Para que una estructura propia también soporte el `for-each` de Java
-(`for (Item item : miEstructura) { ... }`), debe implementar la interfaz `Iterable<E>`,
-cuyo único método (`iterator()`) devuelve el `Iterator<E>` correspondiente.
+Hay dos formas de proveer la clase `Iterator<T>`:
+
+1. **Clase con nombre** — un archivo o clase interna aparte, con su propia
+   implementación de `hasNext()`/`next()` (así están escritos los iteradores de listas
+   enlazadas en la sección "Código Fuente Java" más abajo en esta página —
+   `Iterator_LinkedListEXTEND.java` y similares).
+2. **Clase anónima** — se define directamente dentro del método `iterator()`, sin
+   nombrarla, útil cuando el iterador es simple y no se reutiliza en ningún otro lugar.
+
+El siguiente ejemplo usa una clase anónima para implementar `Rango`, una estructura que
+ni siquiera guarda los elementos en memoria — los calcula al vuelo a partir de dos
+límites:
+
+```java
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+public class Rango implements Iterable<Integer> {
+    private final int inicio;
+    private final int fin; // exclusivo
+
+    public Rango(int inicio, int fin) {
+        this.inicio = inicio;
+        this.fin = fin;
+    }
+
+    @Override
+    public Iterator<Integer> iterator() {
+        return new Iterator<Integer>() {
+            private int actual = inicio;
+
+            @Override
+            public boolean hasNext() {
+                return actual < fin;
+            }
+
+            @Override
+            public Integer next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                return actual++;
+            }
+        };
+    }
+
+    public static void main(String[] args) {
+        Rango rango = new Rango(2, 6);
+        for (int n : rango) {
+            System.out.println(n);
+        }
+    }
+}
+```
+
+Salida real:
+
+```
+2
+3
+4
+5
+```
+
+`Rango` implementa `Iterable<Integer>`, no `Iterator<Integer>` directamente — esa
+distinción importa: `Iterable` es "puedo producir un iterador" (una colección o, como
+aquí, una secuencia calculada); `Iterator` es "soy el cursor de un recorrido en curso",
+con estado mutable (`actual`) que avanza. Mezclar los dos roles en una sola clase es
+exactamente el error que se explica a continuación.
+
+## `iterator()` debe devolver una instancia nueva cada vez
+
+Cada llamada a `iterator()` tiene que devolver un objeto **nuevo**, con su propio
+cursor independiente — nunca la misma instancia compartida entre recorridos distintos.
+El siguiente ejemplo comete ese error a propósito: `ContadorMalo` crea **un solo**
+`Iterator` en el constructor y `iterator()` siempre devuelve esa misma instancia.
+
+```java
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+public class ContadorMalo implements Iterable<Integer> {
+    private final int limite;
+    private final IteradorCompartido compartido = new IteradorCompartido();
+
+    public ContadorMalo(int limite) {
+        this.limite = limite;
+    }
+
+    @Override
+    public Iterator<Integer> iterator() {
+        return compartido; // BUG: siempre la misma instancia
+    }
+
+    private class IteradorCompartido implements Iterator<Integer> {
+        private int actual = 0;
+
+        @Override
+        public boolean hasNext() {
+            return actual < limite;
+        }
+
+        @Override
+        public Integer next() {
+            if (!hasNext()) throw new NoSuchElementException();
+            return actual++;
+        }
+    }
+
+    public static void main(String[] args) {
+        ContadorMalo contador = new ContadorMalo(3);
+
+        System.out.println("Primer for-each:");
+        for (int n : contador) {
+            System.out.println(n);
+        }
+
+        System.out.println("Segundo for-each (mismo iterador, ya agotado):");
+        for (int n : contador) {
+            System.out.println(n);
+        }
+        System.out.println("(no imprimio nada)");
+    }
+}
+```
+
+Salida real:
+
+```
+Primer for-each:
+0
+1
+2
+Segundo for-each (mismo iterador, ya agotado):
+(no imprimio nada)
+```
+
+El segundo `for-each` no imprime absolutamente nada, ni siquiera lanza un error: llama a
+`contador.iterator()`, que devuelve la misma `compartido` de siempre, cuyo campo
+`actual` ya quedó en `3` desde el primer recorrido — así que `hasNext()` devuelve `false`
+de entrada y el bucle nunca entra. Dos `for-each` independientes sobre el mismo
+`ContadorMalo` interfieren entre sí porque, en la práctica, comparten un solo cursor. La
+corrección es la que ya tenía `Rango`: `iterator()` crea (`new Iterator<...>() {...}` o
+`new NombreDeClase()`) una instancia distinta en cada llamada.
+
+## `ConcurrentModificationException`
+
+Modificar una colección de `java.util` (agregar o quitar elementos) directamente
+mientras se la recorre con `for-each` — es decir, sin pasar por el propio iterador — deja
+a este último con una vista inconsistente del tamaño real de la colección, y Java lo
+detecta y lo señala con `ConcurrentModificationException`.
+
+```java
+import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.List;
+
+public class DemoConcurrentModification {
+    public static void main(String[] args) {
+        List<String> nombres = new ArrayList<>();
+        nombres.add("Ana");
+        nombres.add("Beto");
+        nombres.add("Caro");
+        nombres.add("Deni");
+
+        System.out.println("Intento incorrecto: modificar dentro de un for-each");
+        try {
+            for (String nombre : nombres) {
+                if (nombre.equals("Beto")) {
+                    nombres.remove(nombre); // modifica la lista directamente, no via el iterador
+                }
+            }
+        } catch (ConcurrentModificationException e) {
+            System.out.println("Excepcion real: " + e);
+        }
+
+        System.out.println("Lista tras el intento fallido: " + nombres);
+
+        System.out.println();
+        System.out.println("Forma correcta: Iterator.remove()");
+        Iterator<String> it = nombres.iterator();
+        while (it.hasNext()) {
+            String nombre = it.next();
+            if (nombre.equals("Beto")) {
+                it.remove(); // no lanza excepcion
+            }
+        }
+        System.out.println("Lista tras remove() correcto: " + nombres);
+    }
+}
+```
+
+Salida real:
+
+```
+Intento incorrecto: modificar dentro de un for-each
+Excepcion real: java.util.ConcurrentModificationException
+Lista tras el intento fallido: [Ana, Caro, Deni]
+
+Forma correcta: Iterator.remove()
+Lista tras remove() correcto: [Ana, Caro, Deni]
+```
+
+Dos detalles no obvios en esa salida:
+
+- `nombres.remove("Beto")` **sí llegó a ejecutarse** antes de que se lanzara la
+  excepción — por eso la lista ya aparece sin `"Beto"` en el `catch`. La excepción no se
+  lanza en el momento de `remove()`, sino en la **siguiente** llamada a `next()` del
+  `for-each` (al intentar avanzar a `"Caro"`), cuando el iterador nota que el tamaño de
+  la lista cambió por fuera de su control.
+- La segunda parte usa `it.remove()` — el método `remove()` de la interfaz `Iterator`
+  (no el `nombres.remove(...)` de la lista) — que sí está diseñado para modificar la
+  colección en medio de un recorrido: actualiza el estado interno del propio iterador al
+  mismo tiempo que quita el elemento, así que no hay inconsistencia que detectar.
 
 ## `ListIterator<E>`: recorrido en ambas direcciones
 
-Además de `hasNext()`/`next()`, agrega `hasPrevious()`/`previous()` para retroceder, más
-`nextIndex()`/`previousIndex()`, y `add()`/`set()`/`remove()` para modificar la lista
-durante el recorrido — útil cuando se necesita navegar una lista en cualquier dirección,
-no solo hacia adelante.
+`ListIterator<E>` extiende `Iterator<E>` agregando `hasPrevious()`/`previous()` para
+retroceder, `nextIndex()`/`previousIndex()` para consultar la posición, y
+`add()`/`set()` para modificar la lista durante el recorrido. Solo lo ofrecen
+estructuras indexadas como `List<E>` (`ArrayList`, `LinkedList`), no colecciones sin
+orden como `Set<E>`.
+
+```java
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
+
+public class DemoListIterator {
+    public static void main(String[] args) {
+        List<String> lista = new LinkedList<>();
+        lista.add("A");
+        lista.add("B");
+        lista.add("C");
+        lista.add("D");
+
+        ListIterator<String> it = lista.listIterator();
+
+        System.out.println("Avanzando:");
+        while (it.hasNext()) {
+            int idx = it.nextIndex();
+            String val = it.next();
+            System.out.println("nextIndex=" + idx + " next()=" + val);
+        }
+
+        System.out.println();
+        System.out.println("Retrocediendo 2 pasos:");
+        for (int i = 0; i < 2; i++) {
+            int idx = it.previousIndex();
+            String val = it.previous();
+            System.out.println("previousIndex=" + idx + " previous()=" + val);
+        }
+
+        System.out.println();
+        System.out.println("hasNext=" + it.hasNext() + " hasPrevious=" + it.hasPrevious());
+    }
+}
+```
+
+Salida real:
+
+```
+Avanzando:
+nextIndex=0 next()=A
+nextIndex=1 next()=B
+nextIndex=2 next()=C
+nextIndex=3 next()=D
+
+Retrocediendo 2 pasos:
+previousIndex=3 previous()=D
+previousIndex=2 previous()=C
+
+hasNext=true hasPrevious=true
+```
+
+Traza del cursor (el cursor vive **entre** posiciones, no sobre un elemento — por eso
+`nextIndex()` y `previousIndex()` difieren en uno):
+
+| Paso | Cursor antes | `nextIndex()` | Llamada | Devuelve | Cursor después |
+|---|---|---|---|---|---|
+| 1 | entre `-` y `A` | 0 | `next()` | `A` | entre `A` y `B` |
+| 2 | entre `A` y `B` | 1 | `next()` | `B` | entre `B` y `C` |
+| 3 | entre `B` y `C` | 2 | `next()` | `C` | entre `C` y `D` |
+| 4 | entre `C` y `D` | 3 | `next()` | `D` | entre `D` y `-` |
+| 5 | entre `D` y `-` | — | `previous()` | `D` | entre `C` y `D` |
+| 6 | entre `C` y `D` | — | `previous()` | `C` | entre `B` y `C` |
+
+Después de los 4 `next()` y los 2 `previous()`, el cursor quedó entre `B` y `C`
+(posición de índice `2`) — por eso al final `hasNext()` y `hasPrevious()` son ambos
+`true`: quedan elementos de sobra a los dos lados. Nótese que `previous()` devuelve el
+elemento que quedó **detrás** al retroceder (`D`, luego `C`), exactamente los mismos que
+`next()` acababa de entregar en el otro sentido — recorrer hacia atrás sobre el mismo
+tramo reproduce la secuencia en reversa.
+
+## Errores frecuentes
+
+- **"Si mi clase tiene un método `next()`, ya soporta `for-each`."** Falso — el `for-each`
+  llama a `iterator()`, definido por `Iterable<T>`, no directamente a `next()`. Una clase
+  que solo implementa `Iterator<T>` (sin `Iterable<T>`) no se puede usar en un `for-each`.
+- **"`iterator()` puede devolver siempre el mismo objeto si total el estado se resetea al
+  final."** Falso incluso si se resetea: dos recorridos que ocurren **al mismo tiempo**
+  (por ejemplo, un `for-each` anidado sobre la misma colección) comparten cursor y se
+  pisan entre sí. Ver la sección de `ContadorMalo` arriba.
+- **"`ConcurrentModificationException` se lanza apenas se llama a `remove()` sobre la
+  colección."** Falso — se lanza en la siguiente llamada a `next()`/`hasNext()` del
+  iterador activo, no en el momento mismo de la modificación (por eso en el ejemplo de
+  arriba `"Beto"` ya había sido removido cuando se imprimió la excepción).
+- **"`it.remove()` es lo mismo que `coleccion.remove(elemento)` pero llamado desde el
+  iterador."** No — `it.remove()` solo puede remover el **último elemento devuelto por
+  `next()`** de ese mismo iterador, y actualiza el estado interno del iterador a la vez;
+  por eso no dispara `ConcurrentModificationException` mientras que
+  `coleccion.remove(...)` sí.
+- **"`previousIndex()` después de un `next()` da el mismo índice que el `nextIndex()` de
+  antes de llamarlo."** Cierto, y es justamente la fuente de confusión inversa: como el
+  cursor vive entre posiciones, `next()` y `previous()` llamados de forma alternada sin
+  avanzar de verdad devuelven el mismo elemento una y otra vez.
+
+## Comprueba lo aprendido
+
+- ¿Por qué una clase que implementa `Iterator<T>` pero no `Iterable<T>` no puede usarse
+  en un `for (T x : objeto)`? ¿Qué error da el compilador?
+- En el ejemplo de `ContadorMalo`, ¿qué imprimiría un **tercer** `for-each` después de
+  los dos que ya se mostraron? ¿Y si en vez de un `for-each` se llamara a
+  `contador.iterator().hasNext()` directamente, sin recorrer nada?
+- Sobre una `List<Integer>` con `[10, 20, 30, 40, 50]`, recorrida con un `for-each`: ¿en
+  cuál de estos casos se lanza `ConcurrentModificationException` y en cuál no, y por qué?
+  (a) remover el elemento `30` con `lista.remove(Integer.valueOf(30))` dentro del bucle.
+  (b) remover el **último** elemento (`50`) con el mismo método, en la última iteración
+  del bucle.
+- Sobre `["X", "Y", "Z"]` con un `ListIterator` recién creado (cursor al inicio): se
+  llama `next()`, `next()`, `previous()`, `next()`, en ese orden. Escribe qué devuelve
+  cada llamada y en qué posición queda el cursor al final.
+
+## Resumen
+
+- `Iterator<E>` define `hasNext()`/`next()` (y opcionalmente `remove()`); `Iterable<E>`
+  define `iterator()`, que es lo que el `for-each` de Java realmente llama por detrás.
+- Una clase propia puede recorrerse con `for-each` implementando `Iterable<E>`, con el
+  `Iterator<E>` devuelto por una clase con nombre o por una clase anónima dentro de
+  `iterator()`.
+- `iterator()` debe crear una instancia **nueva** en cada llamada — devolver siempre la
+  misma hace que recorridos independientes (o anidados) sobre la misma colección
+  compartan cursor y se interfieran silenciosamente.
+- Modificar una colección de `java.util` directamente (no vía el iterador) mientras se
+  la recorre con `for-each` lanza `ConcurrentModificationException` en la siguiente
+  llamada a `next()`, no en el momento de la modificación; la forma correcta de quitar
+  elementos durante un recorrido es `Iterator.remove()`.
+- `ListIterator<E>` agrega recorrido hacia atrás (`hasPrevious()`/`previous()`) y
+  consulta de posición (`nextIndex()`/`previousIndex()`) sobre el mismo cursor, que vive
+  **entre** elementos — por eso ambos índices casi siempre difieren en uno.

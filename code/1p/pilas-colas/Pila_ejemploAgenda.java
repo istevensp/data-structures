@@ -1,8 +1,19 @@
+// Una agenda de contactos con deshacer/rehacer, construida enteramente
+// sobre las estructuras de este parcial: una lista circular doblemente
+// enlazada (con su propio Iterator) guarda los contactos, y una Pila
+// (implementada sobre esa misma lista circular) guarda el historial de
+// acciones — mostrando que una pila no necesita un arreglo por debajo,
+// cualquier estructura que soporte "agregar/quitar por un extremo" sirve.
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
 
 //////////////////////////////////////////////////////////////
 //Clase Contacto
 //////////////////////////////////////////////////////////////
-import java.time.LocalDate;
 
 class Contacto {
     private String nombre;
@@ -49,9 +60,6 @@ class Contacto {
 //Comparadores Personalizados
 //////////////////////////////////////////////////////////////
 
-
-import java.util.Comparator;
-
 class ComparadoresContacto {
 
     // Comparador por nombre
@@ -71,31 +79,14 @@ class ComparadoresContacto {
 }
 
 
-public void ordenarContactos(Comparator<Contacto> comparador) {
-    // Crear una lista auxiliar para ordenar los contactos
-    List<Contacto> listaOrdenada = new ArrayList<>();
-    for (Contacto c : contactos) {
-        listaOrdenada.add(c);
-    }
-
-    // Ordenar usando el comparador proporcionado
-    listaOrdenada.sort(comparador);
-
-    // Mostrar contactos ordenados
-    System.out.println("Contactos ordenados:");
-    for (Contacto c : listaOrdenada) {
-        System.out.println(c);
-    }
-}
-
-
 //////////////////////////////////////////////////////////////
-//Clase Lista Doblemente Enlazada
+//Clase Lista Circular Doblemente Enlazada
 //////////////////////////////////////////////////////////////
 
-import java.util.Iterator;
-
-class ListaCircularDobleEnlazada<T> {
+// implements Iterable<T> es lo que permite usar for (T x : lista) sobre
+// esta clase más abajo (en Agenda.buscarContacto/mostrarContactos) — sin
+// esto, un for-each no sabría cómo recorrerla.
+class ListaCircularDobleEnlazada<T> implements Iterable<T> {
     private Nodo<T> head; // Nodo inicial
     private int size;     // Tamaño de la lista
 
@@ -176,8 +167,9 @@ class ListaCircularDobleEnlazada<T> {
         return size == 0;
     }
 
-    // Método para obtener un iterador
-    public IteradorLista iterador() {
+    // Método de la interfaz Iterable — obligatorio para que el for-each funcione
+    @Override
+    public Iterator<T> iterator() {
         return new IteradorLista();
     }
 
@@ -202,11 +194,13 @@ class ListaCircularDobleEnlazada<T> {
 }
 
 
-
 //////////////////////////////////////////////////////////////
 //Clase STACK Personalizada
 //////////////////////////////////////////////////////////////
 
+// Pila construida sobre ListaCircularDobleEnlazada en vez de un arreglo:
+// push() y pop() son O(1) porque agregar()/obtenerUltimo() operan sobre
+// 'head.prev' (el último nodo), sin recorrer la lista.
 class Stack<T> {
     private ListaCircularDobleEnlazada<T> lista; // La lista circular doblemente enlazada que actúa como base de la pila
 
@@ -252,19 +246,16 @@ class Stack<T> {
     }
 
     // Iterador para recorrer la pila
-    public ListaCircularDobleEnlazada<T>.IteradorLista iterator() {
+    public Iterator<T> iterator() {
         // Devolvemos un iterador que permite recorrer la pila desde el primer elemento
-        return lista.iterador();
+        return lista.iterator();
     }
 }
 
 
 //////////////////////////////////////////////////////////////
-//Clase Agenda 
+//Clase Agenda
 //////////////////////////////////////////////////////////////
-
-
-import java.time.LocalDate;
 
 class Agenda {
     private ListaCircularDobleEnlazada<Contacto> contactos; // Lista circular doblemente enlazada para gestionar los contactos
@@ -279,23 +270,49 @@ class Agenda {
 
     // Método para agregar un contacto
     public void agregarContacto(Contacto contacto) {
-        contactos.agregar(contacto); // Se agrega el contacto a la lista circular
+        agregarContactoSilencioso(contacto);
         historialAcciones.push("ADD:" + contacto.getNombre()); // Registramos la acción de agregar en la pila de historial
         redoAcciones = new Stack<>(); // Limpiamos la pila de rehacer porque hemos realizado una nueva acción
-        System.out.println("Contacto agregado: " + contacto);
     }
 
     // Método para eliminar un contacto
     public void eliminarContacto(String nombre) {
+        if (eliminarContactoSilencioso(nombre)) {
+            historialAcciones.push("DELETE:" + nombre); // Registramos la acción de eliminar en la pila de historial
+            redoAcciones = new Stack<>(); // Limpiamos la pila de rehacer porque hemos realizado una nueva acción
+        }
+    }
+
+    // Variantes sin efecto en el historial ni en la pila de rehacer — las
+    // usan deshacer()/rehacer(), que ya gestionan esas dos pilas por su
+    // cuenta. Si estos dos métodos llamaran a agregarContacto/eliminarContacto
+    // directamente, cada deshacer() limpiaría la pila de rehacer que el
+    // propio deshacer() acaba de llenar, y rehacer() nunca tendría nada que
+    // rehacer.
+    private void agregarContactoSilencioso(Contacto contacto) {
+        contactos.agregar(contacto); // Se agrega el contacto a la lista circular
+        System.out.println("Contacto agregado: " + contacto);
+    }
+
+    private boolean eliminarContactoSilencioso(String nombre) {
         Contacto contacto = buscarPorNombre(nombre); // Buscar el contacto por nombre
         if (contacto != null) {
             contactos.eliminar(contacto, (c1, c2) -> c1.getNombre().compareTo(c2.getNombre())); // Eliminamos el contacto usando el comparador
-            historialAcciones.push("DELETE:" + nombre); // Registramos la acción de eliminar en la pila de historial
-            redoAcciones = new Stack<>(); // Limpiamos la pila de rehacer porque hemos realizado una nueva acción
             System.out.println("Contacto eliminado: " + nombre);
-        } else {
-            System.out.println("Contacto no encontrado: " + nombre);
+            return true;
         }
+        System.out.println("Contacto no encontrado: " + nombre);
+        return false;
+    }
+
+    // Método auxiliar para encontrar un contacto por nombre exacto
+    private Contacto buscarPorNombre(String nombre) {
+        for (Contacto contacto : contactos) {
+            if (contacto.getNombre().equals(nombre)) {
+                return contacto;
+            }
+        }
+        return null;
     }
 
     // Método para buscar un contacto usando un comparador
@@ -308,7 +325,7 @@ class Agenda {
         }
         return null; // Si no se encuentra, retorna null
     }
-	
+
     // Método para deshacer la última acción
     public void deshacer() {
         if (historialAcciones.isEmpty()) {
@@ -325,12 +342,12 @@ class Agenda {
 
         if (tipo.equals("ADD")) {
             // Si la acción fue agregar, revertimos eliminando el contacto
-            eliminarContacto(nombre);
+            eliminarContactoSilencioso(nombre);
             System.out.println("Deshacer agregar: " + nombre);
         } else if (tipo.equals("DELETE")) {
             // Si la acción fue eliminar, revertimos agregando el contacto (requiere información adicional en un caso real)
             Contacto restaurado = new Contacto(nombre, "000-000", "email@ejemplo.com", "Dirección", LocalDate.now());
-            agregarContacto(restaurado);
+            agregarContactoSilencioso(restaurado);
             System.out.println("Deshacer eliminar: " + nombre);
         }
     }
@@ -352,12 +369,28 @@ class Agenda {
         if (tipo.equals("ADD")) {
             // Si la acción fue agregar, volvemos a agregar el contacto
             Contacto restaurado = new Contacto(nombre, "000-000", "email@ejemplo.com", "Dirección", LocalDate.now());
-            agregarContacto(restaurado);
+            agregarContactoSilencioso(restaurado);
             System.out.println("Rehacer agregar: " + nombre);
         } else if (tipo.equals("DELETE")) {
             // Si la acción fue eliminar, volvemos a eliminar el contacto
-            eliminarContacto(nombre);
+            eliminarContactoSilencioso(nombre);
             System.out.println("Rehacer eliminar: " + nombre);
+        }
+    }
+
+    // Ordena una copia de los contactos según el Comparator recibido — no
+    // modifica el orden interno de la lista circular, solo lo que se muestra.
+    public void ordenarContactos(Comparator<Contacto> comparador) {
+        List<Contacto> listaOrdenada = new ArrayList<>();
+        for (Contacto c : contactos) {
+            listaOrdenada.add(c);
+        }
+
+        listaOrdenada.sort(comparador);
+
+        System.out.println("Contactos ordenados:");
+        for (Contacto c : listaOrdenada) {
+            System.out.println(c);
         }
     }
 
@@ -367,5 +400,35 @@ class Agenda {
         for (Contacto contacto : contactos) {
             System.out.println(contacto); // Iteramos y mostramos cada contacto
         }
+    }
+}
+
+
+//////////////////////////////////////////////////////////////
+//Uso
+//////////////////////////////////////////////////////////////
+
+public class AgendaConDeshacer {
+    public static void main(String[] args) {
+        Agenda agenda = new Agenda();
+
+        agenda.agregarContacto(new Contacto("Charlie", "333", "charlie@mail.com", "Av. 3", LocalDate.of(1992, 1, 1)));
+        agenda.agregarContacto(new Contacto("Alice", "111", "alice@mail.com", "Av. 1", LocalDate.of(1990, 1, 1)));
+        agenda.agregarContacto(new Contacto("Bob", "222", "bob@mail.com", "Av. 2", LocalDate.of(1991, 1, 1)));
+
+        System.out.println();
+        agenda.ordenarContactos(ComparadoresContacto.porNombre());
+
+        System.out.println("\nEliminar Bob:");
+        agenda.eliminarContacto("Bob");
+        agenda.mostrarContactos();
+
+        System.out.println("\nDeshacer la eliminación de Bob:");
+        agenda.deshacer();
+        agenda.mostrarContactos();
+
+        System.out.println("\nRehacer (volver a eliminar Bob):");
+        agenda.rehacer();
+        agenda.mostrarContactos();
     }
 }

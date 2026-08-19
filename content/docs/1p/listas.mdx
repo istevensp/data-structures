@@ -10,7 +10,9 @@ topic: listas
 Una lista es una colección ordenada de elementos que permite duplicados y acceso por
 posición. La forma en que cada variante almacena y enlaza sus elementos internamente
 determina qué operaciones son rápidas y cuáles son costosas — esa es la decisión de
-diseño central al elegir una lista para un problema dado.
+diseño central al elegir una lista para un problema dado. Esta página no se queda en la
+teoría: cada complejidad de la tabla de abajo está respaldada por una clase Java real,
+compilada y ejecutada, con su traza de estado tras cada operación.
 
 ## Tipos de listas
 
@@ -23,14 +25,14 @@ O(n), porque hay que desplazar los elementos siguientes. Ideal cuando el acceso 
 índice es frecuente y las inserciones intermedias son raras — inventarios, tablas de
 puntuaciones, resultados de búsqueda.
 
-### Lista enlazada simple
+### Lista enlazada simple (resumen)
 
 Cada nodo guarda un dato y una referencia al siguiente nodo; no requiere memoria
 contigua ni redimensionamiento. Inserción al inicio en O(1); inserción al final o en medio,
 y cualquier acceso por posición, en O(n) por el recorrido secuencial. Útil para pilas,
 historiales y buffers donde solo se agrega o quita desde un extremo.
 
-### Lista doblemente enlazada
+### Lista doblemente enlazada (resumen)
 
 Igual que la simple, pero cada nodo también referencia al nodo anterior, permitiendo
 recorrer la lista en ambas direcciones. Inserción al inicio o al final en O(1); en el medio,
@@ -61,12 +63,533 @@ transporte público).
 | Circular simple | O(n) | O(1) | O(n) | O(n) |
 | Circular doble | O(n) | O(1) | O(n) | O(1) |
 
+Las siguientes secciones implementan cada variante desde cero en Java y demuestran, con
+trazas reales de ejecución, por qué la tabla dice lo que dice.
+
+## Lista respaldada por arreglo (ArrayList casero)
+
+Igual que `PilaArreglo` en [Pilas y Colas](/teaching/data-structures/1p/pilas-colas), un
+arreglo dinámico empieza con una capacidad pequeña y la duplica cuando se llena. La
+diferencia frente a una pila es que aquí se puede insertar en **cualquier** posición, no
+solo al final — y eso exige desplazar elementos.
+
+```java
+public class ListaArreglo<T> {
+    private Object[] datos;
+    private int size;
+
+    public ListaArreglo() {
+        datos = new Object[2]; // capacidad inicial deliberadamente pequeña
+        size = 0;
+    }
+
+    public void insertarFinal(T elemento) {
+        if (size == datos.length) redimensionar();
+        datos[size] = elemento;
+        size++;
+    }
+
+    public void insertarInicio(T elemento) {
+        insertarEn(0, elemento);
+    }
+
+    public void insertarEn(int pos, T elemento) {
+        if (pos < 0 || pos > size) throw new IndexOutOfBoundsException("pos=" + pos);
+        if (size == datos.length) redimensionar();
+        for (int i = size; i > pos; i--) {
+            datos[i] = datos[i - 1]; // desplaza cada elemento una posición a la derecha
+        }
+        datos[pos] = elemento;
+        size++;
+    }
+
+    @SuppressWarnings("unchecked")
+    public T get(int pos) {
+        if (pos < 0 || pos >= size) throw new IndexOutOfBoundsException("pos=" + pos);
+        return (T) datos[pos];
+    }
+
+    public int size() { return size; }
+    public int capacidad() { return datos.length; }
+
+    private void redimensionar() {
+        Object[] nuevo = new Object[datos.length * 2];
+        System.arraycopy(datos, 0, nuevo, 0, datos.length);
+        datos = nuevo;
+    }
+}
+```
+
+Traza real (capacidad inicial 2) de cinco `insertarFinal`, un `insertarInicio` y un
+`insertarEn` intermedio:
+
+| Operación | Estado | `size()` | `capacidad()` |
+|---|---|---|---|
+| `insertarFinal(10)` | `[10]` | 1 | 2 |
+| `insertarFinal(20)` | `[10, 20]` | 2 | 2 |
+| `insertarFinal(30)` | redimensiona 2→4 → `[10, 20, 30]` | 3 | 4 |
+| `insertarFinal(40)` | `[10, 20, 30, 40]` | 4 | 4 |
+| `insertarFinal(50)` | redimensiona 4→8 → `[10, 20, 30, 40, 50]` | 5 | 8 |
+| `insertarInicio(1)` | `[1, 10, 20, 30, 40, 50]` | 6 | 8 |
+| `insertarEn(3, 99)` | `[1, 10, 20, 99, 30, 40, 50]` | 7 | 8 |
+
+`insertarInicio(1)` desplazó los 6 elementos existentes una posición a la derecha antes
+de escribir en el índice 0 — de ahí el O(n). `insertarEn(3, 99)` desplazó solo los
+elementos desde la posición 3 en adelante (`30, 40, 50`), pero sigue siendo O(n) en el
+peor caso porque la posición de inserción puede estar cerca del inicio. El
+redimensionamiento (2→4, luego 4→8) es exactamente el mismo mecanismo que
+`PilaArreglo.redimensionar()`: se paga una copia completa ocasional, pero repartido entre
+todos los `insertarFinal`, el costo amortizado sigue siendo O(1) por operación — el
+`insertarEn`/`insertarInicio` en cambio es O(n) **por el desplazamiento**, no por el
+redimensionamiento, y eso no se diluye con amortización.
+
+## Lista enlazada simple
+
+Sin capacidad fija ni copias masivas: cada inserción crea un nodo nuevo y reacomoda unas
+pocas referencias.
+
+```java
+public class ListaEnlazadaSimple<T> {
+    private static class Nodo<T> {
+        T valor;
+        Nodo<T> siguiente;
+        Nodo(T valor) { this.valor = valor; }
+    }
+
+    private Nodo<T> cabeza;
+    private int size;
+
+    public void insertarInicio(T elemento) {
+        Nodo<T> nuevo = new Nodo<>(elemento);
+        nuevo.siguiente = cabeza;
+        cabeza = nuevo;
+        size++;
+    }
+
+    public void insertarFinal(T elemento) {
+        Nodo<T> nuevo = new Nodo<>(elemento);
+        if (cabeza == null) {
+            cabeza = nuevo;
+        } else {
+            Nodo<T> actual = cabeza;
+            while (actual.siguiente != null) { // hay que recorrer toda la lista
+                actual = actual.siguiente;
+            }
+            actual.siguiente = nuevo;
+        }
+        size++;
+    }
+
+    public void insertarEn(int pos, T elemento) {
+        if (pos < 0 || pos > size) throw new IndexOutOfBoundsException("pos=" + pos);
+        if (pos == 0) { insertarInicio(elemento); return; }
+        Nodo<T> anterior = cabeza;
+        for (int i = 0; i < pos - 1; i++) anterior = anterior.siguiente; // recorrido O(n)
+        Nodo<T> nuevo = new Nodo<>(elemento);
+        nuevo.siguiente = anterior.siguiente;
+        anterior.siguiente = nuevo;
+        size++;
+    }
+
+    public T get(int pos) {
+        if (pos < 0 || pos >= size) throw new IndexOutOfBoundsException("pos=" + pos);
+        Nodo<T> actual = cabeza;
+        for (int i = 0; i < pos; i++) actual = actual.siguiente;
+        return actual.valor;
+    }
+
+    public int size() { return size; }
+}
+```
+
+Traza real:
+
+| Operación | Estado | `size()` |
+|---|---|---|
+| `insertarInicio("B")` | `[B]` | 1 |
+| `insertarInicio("A")` | `[A, B]` | 2 |
+| `insertarFinal("D")` | `[A, B, D]` | 3 |
+| `insertarEn(2, "C")` | `[A, B, C, D]` | 4 |
+| `insertarFinal("E")` | `[A, B, C, D, E]` | 5 |
+
+Con la lista final `[A, B, C, D, E]`: `get(0)` → `A`, `get(2)` → `C`, `get(4)` → `E` —
+cada `get` recorrió esa cantidad de nodos desde `cabeza`, confirmando el O(n) de acceso
+por índice.
+
+Nótese que esta implementación **no** guarda un puntero a la cola: por eso
+`insertarFinal` tiene que recorrer toda la lista para encontrar el último nodo, y por eso
+la tabla de comparación marca "inserción al final" como O(n) para la enlazada simple.
+(`java.util.LinkedList` sí guarda un puntero a la cola internamente, así que su
+`addLast` es O(1) — pero esta clase deliberadamente no lo hace, para mostrar el caso
+general de una lista enlazada simple "de libro".)
+
+## Lista doblemente enlazada
+
+Agregar una referencia `anterior` a cada nodo cuesta memoria extra, pero compra algo que
+la simple no puede dar sin recorrer todo desde el inicio: recorrer hacia atrás.
+
+```java
+public class ListaDoblementeEnlazada<T> {
+    private static class Nodo<T> {
+        T valor;
+        Nodo<T> anterior;
+        Nodo<T> siguiente;
+        Nodo(T valor) { this.valor = valor; }
+    }
+
+    private Nodo<T> cabeza;
+    private Nodo<T> cola;
+    private int size;
+
+    public void insertarInicio(T elemento) {
+        Nodo<T> nuevo = new Nodo<>(elemento);
+        if (cabeza == null) {
+            cabeza = cola = nuevo;
+        } else {
+            nuevo.siguiente = cabeza;
+            cabeza.anterior = nuevo;
+            cabeza = nuevo;
+        }
+        size++;
+    }
+
+    public void insertarFinal(T elemento) {
+        Nodo<T> nuevo = new Nodo<>(elemento);
+        if (cola == null) {
+            cabeza = cola = nuevo;
+        } else {
+            nuevo.anterior = cola;
+            cola.siguiente = nuevo;
+            cola = nuevo;
+        }
+        size++;
+    }
+
+    public void insertarEn(int pos, T elemento) {
+        if (pos < 0 || pos > size) throw new IndexOutOfBoundsException("pos=" + pos);
+        if (pos == 0) { insertarInicio(elemento); return; }
+        if (pos == size) { insertarFinal(elemento); return; }
+        Nodo<T> actual = cabeza;
+        for (int i = 0; i < pos; i++) actual = actual.siguiente; // nodo que queda después del nuevo
+        Nodo<T> nuevo = new Nodo<>(elemento);
+        Nodo<T> anterior = actual.anterior;
+        nuevo.anterior = anterior;
+        nuevo.siguiente = actual;
+        anterior.siguiente = nuevo;
+        actual.anterior = nuevo;
+        size++;
+    }
+
+    public String recorrerAdelante() {
+        StringBuilder sb = new StringBuilder("[");
+        Nodo<T> actual = cabeza;
+        while (actual != null) {
+            sb.append(actual.valor);
+            if (actual.siguiente != null) sb.append(", ");
+            actual = actual.siguiente;
+        }
+        return sb.append("]").toString();
+    }
+
+    public String recorrerAtras() {
+        StringBuilder sb = new StringBuilder("[");
+        Nodo<T> actual = cola;
+        while (actual != null) {
+            sb.append(actual.valor);
+            if (actual.anterior != null) sb.append(", ");
+            actual = actual.anterior;
+        }
+        return sb.append("]").toString();
+    }
+}
+```
+
+Traza real con `insertarFinal(10, 20, 30, 40, 50)` y luego `insertarEn(2, 99)`:
+
+| Operación | `recorrerAdelante()` | `recorrerAtras()` |
+|---|---|---|
+| tras 5× `insertarFinal` | `[10, 20, 30, 40, 50]` | `[50, 40, 30, 20, 10]` |
+| `insertarEn(2, 99)` | `[10, 20, 99, 30, 40, 50]` | `[50, 40, 30, 99, 20, 10]` |
+
+`insertarEn(2, 99)` recorrió 2 nodos desde `cabeza` para ubicarse (O(n) en el peor caso),
+pero una vez ubicado, insertar el nodo nuevo es O(1): solo reacomoda 4 referencias
+(`anterior`/`siguiente` del nuevo nodo y de sus dos vecinos).
+
+### Lo que la doble enlazada permite y la simple no puede hacer barato
+
+La afirmación "la lista doblemente enlazada permite recorrer hacia atrás" suena obvia,
+pero vale demostrarla con números reales en vez de solo enunciarla. Si solo existe el
+puntero `siguiente` (lista simple) y se necesita visitar los nodos en orden inverso, la
+única opción sin estructuras auxiliares es **recomenzar desde la cabeza cada vez** para
+encontrar el predecesor de cada nodo:
+
+```java
+// Lista simple de n nodos: para visitar en orden inverso, hay que recomenzar
+// desde la cabeza en cada paso porque no existe el puntero "anterior".
+int pasosSimple = 0;
+for (int posDestino = n; posDestino >= 1; posDestino--) {
+    Nodo p = cabeza;
+    int pasosParaLlegar = 0;
+    for (int i = 1; i < posDestino; i++) { p = p.siguiente; pasosParaLlegar++; }
+    pasosSimple += pasosParaLlegar;
+    // visitar p aquí
+}
+```
+
+Contando cada paso de puntero seguido, con `n = 20`:
+
+| Implementación | Orden de visita | Pasos de puntero totales |
+|---|---|---|
+| Enlazada simple (recomienza desde `cabeza` cada vez) | `20, 19, 18, ..., 1` | **190** |
+| Doblemente enlazada (sigue `anterior` una vez) | `20, 19, 18, ..., 1` | **20** |
+
+Ambas producen exactamente el mismo orden — la diferencia está en el costo. 190 es
+`19 + 18 + ... + 1 + 0`, la suma triangular: recorrer hacia atrás con solo el puntero
+`siguiente` cuesta **O(n²)**. La doblemente enlazada lo hace en **O(n)** porque cada paso
+hacia atrás es una sola instrucción (`actual = actual.anterior`), sin recomenzar nada.
+Esta es la prueba compilada de por qué "recorrer hacia atrás" no es un simple detalle de
+API: es una diferencia real de complejidad.
+
+## Listas circulares (breve): simple y doble
+
+Una lista circular es una enlazada (simple o doble) donde el último nodo, en vez de
+apuntar a `null`, apunta de vuelta al primero. La tabla de comparación ya mostró algo
+que puede parecer contradictorio: la circular **simple** tiene inserción al inicio en
+O(1) pero al final en O(n), mientras la circular **doble** logra O(1) en ambos extremos.
+El código de abajo muestra por qué.
+
+### Circular simple: por qué el inicio es O(1) pero el final no
+
+Esta implementación guarda una única referencia, `cabeza` — sin puntero a la cola. Para
+insertar al inicio en O(1) sin esa referencia, se usa un truco: en vez de crear el nodo
+nuevo y engancharlo *antes* de `cabeza` (lo que exigiría encontrar al nodo anterior a
+`cabeza`, es decir, el último — O(n)), se clona el contenido actual de `cabeza` en un
+nodo nuevo que se engancha *después*, y se sobrescribe el valor de `cabeza` con el
+elemento entrante. El resultado lógico es el mismo (el elemento nuevo queda primero),
+pero el costo es O(1) porque no hizo falta ubicar al último nodo.
+
+```java
+public class ListaCircularSimple<T> {
+    private static class Nodo<T> {
+        T valor;
+        Nodo<T> siguiente;
+        Nodo(T valor) { this.valor = valor; }
+    }
+
+    private Nodo<T> cabeza; // única referencia que se mantiene
+    private int size;
+
+    public void insertarInicio(T elemento) {
+        if (cabeza == null) {
+            cabeza = new Nodo<>(elemento);
+            cabeza.siguiente = cabeza; // se apunta a sí mismo: ciclo de 1 nodo
+            size++;
+            return;
+        }
+        Nodo<T> clon = new Nodo<>(cabeza.valor);
+        clon.siguiente = cabeza.siguiente;
+        cabeza.valor = elemento;   // cabeza pasa a "contener" el nuevo valor
+        cabeza.siguiente = clon;   // el valor viejo queda en el segundo nodo
+        size++;
+    }
+
+    // O(n): sin referencia al último nodo, hay que recorrer hasta encontrarlo
+    // (el nodo cuyo "siguiente" es cabeza).
+    public void insertarFinal(T elemento) {
+        if (cabeza == null) { insertarInicio(elemento); return; }
+        Nodo<T> actual = cabeza;
+        while (actual.siguiente != cabeza) actual = actual.siguiente;
+        Nodo<T> nuevo = new Nodo<>(elemento);
+        nuevo.siguiente = cabeza;
+        actual.siguiente = nuevo;
+        size++;
+    }
+}
+```
+
+Traza real:
+
+| Operación | Estado (recorrido desde `cabeza`) |
+|---|---|
+| `insertarInicio(10)` | `[10]` — `último.siguiente == cabeza`: true |
+| `insertarInicio(20)` | `[20, 10]` — `último.siguiente == cabeza`: true |
+| `insertarInicio(30)` | `[30, 20, 10]` — `último.siguiente == cabeza`: true |
+| `insertarFinal(40)` | `[30, 20, 10, 40]` — `último.siguiente == cabeza`: true |
+| `insertarFinal(50)` | `[30, 20, 10, 40, 50]` — `último.siguiente == cabeza`: true |
+
+Cada fila confirma en tiempo de ejecución que el ciclo se mantiene cerrado
+(`último.siguiente == cabeza`). `insertarFinal` recorrió toda la lista para hallar ese
+último nodo — O(n) real, no hipotético.
+
+### Circular doble: por qué ambos extremos son O(1)
+
+Con enlace doble, `cabeza.anterior` **ya es** la cola — no hace falta recorrer nada para
+encontrarla, a diferencia de la circular simple:
+
+```java
+public class ListaCircularDoble<T> {
+    private static class Nodo<T> {
+        T valor;
+        Nodo<T> anterior;
+        Nodo<T> siguiente;
+        Nodo(T valor) { this.valor = valor; }
+    }
+
+    private Nodo<T> cabeza; // cola siempre es cabeza.anterior: no hace falta guardarla
+    private int size;
+
+    public void insertarInicio(T elemento) {
+        Nodo<T> nuevo = new Nodo<>(elemento);
+        if (cabeza == null) {
+            nuevo.siguiente = nuevo;
+            nuevo.anterior = nuevo;
+            cabeza = nuevo;
+        } else {
+            Nodo<T> cola = cabeza.anterior; // O(1): acceso directo vía "anterior"
+            nuevo.siguiente = cabeza;
+            nuevo.anterior = cola;
+            cola.siguiente = nuevo;
+            cabeza.anterior = nuevo;
+            cabeza = nuevo;
+        }
+        size++;
+    }
+
+    public void insertarFinal(T elemento) {
+        if (cabeza == null) { insertarInicio(elemento); return; }
+        Nodo<T> cola = cabeza.anterior;
+        Nodo<T> nuevo = new Nodo<>(elemento);
+        nuevo.anterior = cola;
+        nuevo.siguiente = cabeza;
+        cola.siguiente = nuevo;
+        cabeza.anterior = nuevo;
+        size++;
+    }
+}
+```
+
+Traza real:
+
+| Operación | Estado |
+|---|---|
+| `insertarFinal("B")` | `[B]` |
+| `insertarFinal("C")` | `[B, C]` |
+| `insertarInicio("A")` | `[A, B, C]` |
+| `insertarFinal("D")` | `[A, B, C, D]` |
+
+Las cuatro operaciones costaron O(1) cada una — ninguna recorrió la lista. La diferencia
+con la circular simple no es el ciclo en sí, sino tener o no el puntero `anterior`: es
+exactamente la misma razón por la que la doblemente enlazada (no circular) gana en
+`insertarFinal` frente a la enlazada simple.
+
 ## ArrayList vs. LinkedList en Java
 
 En la práctica, la elección casi siempre se reduce a estas dos:
 
 - **ArrayList** cuando el acceso por índice es frecuente y hay pocas inserciones o
   eliminaciones intermedias — usa menos memoria y itera más rápido.
-- **LinkedList** cuando hay muchas inserciones/eliminaciones en posiciones arbitrarias y
-  el acceso por índice no es crítico — evita mover elementos, a costa de más memoria
-  por los punteros extra de cada nodo.
+- **LinkedList** cuando hay muchas inserciones/eliminaciones **ya posicionado** — por
+  ejemplo, avanzando con un `ListIterator` y modificando sobre la marcha — y el acceso
+  por índice no es crítico: evita mover elementos, a costa de más memoria por los
+  punteros extra de cada nodo. Ojo: insertar en una posición arbitraria dada solo por su
+  **índice** (`lista.add(i, elemento)`) sigue costando `O(n)` en ambas — como muestra la
+  tabla de arriba, LinkedList también necesita recorrer `i` nodos para llegar ahí. La
+  ventaja real de LinkedList aparece solo cuando ya tienes una referencia a la posición
+  (un iterador), no por buscarla por índice.
+
+Hay un caso, sin embargo, donde `LinkedList` gana incluso indexando por número: insertar
+siempre en la posición 0. No hace falta recorrer nada para llegar ahí, y `ArrayList`
+paga el desplazamiento completo en cada inserción. Medido con datos reales:
+
+```java
+int n = 40_000;
+List<Integer> arrayList = new ArrayList<>();
+for (int i = 0; i < n; i++) arrayList.add(0, i);   // desplaza todo lo que ya hay
+
+List<Integer> linkedList = new LinkedList<>();
+for (int i = 0; i < n; i++) linkedList.add(0, i);  // O(1): sin desplazar nada
+```
+
+Resultado real (con 3 corridas de calentamiento previas para estabilizar el JIT):
+
+```
+n = 40000 inserciones al inicio (add(0, x))
+ArrayList:  51,71 ms
+LinkedList: 0,85 ms
+ArrayList tardó 61,0x más que LinkedList
+```
+
+Con 40 000 inserciones al inicio, `ArrayList` tardó aproximadamente 61 veces más que
+`LinkedList` en esta corrida — la brecha crece con `n` porque el costo de `ArrayList` es
+O(n) por inserción (O(n²) total), mientras que `LinkedList.add(0, x)` es O(1) por
+inserción (O(n) total). Esta es exactamente la situación donde la ventaja teórica de
+`LinkedList` se traduce en una diferencia medible, no solo hipotética — a diferencia de
+`add(i, x)` con `i` variable, donde ambas son O(n) y `ArrayList` suele ganar en la
+práctica por su mejor uso de caché.
+
+## Errores frecuentes
+
+- **"LinkedList siempre es más rápida para insertar."** Falso en general — solo lo es
+  cuando la posición de inserción ya se conoce (posición 0, o una posición alcanzada con
+  un iterador). Insertar por índice arbitrario (`add(i, x)`) es O(n) en ambas, y en la
+  práctica `ArrayList` suele ganar ese caso por memoria contigua y mejor uso de caché.
+- **"Un ArrayList que se queda sin espacio falla o se corrompe."** No — se redimensiona
+  automáticamente duplicando su capacidad, tal como muestra la traza de
+  `ListaArreglo` arriba. El costo de esa copia se amortiza entre todas las inserciones al
+  final, así que el promedio se mantiene O(1).
+- **"Una lista doblemente enlazada gasta el doble de memoria que una simple."** Exagerado
+  — cada nodo agrega **una** referencia extra (`anterior`), no duplica todo el nodo. El
+  costo real es una referencia adicional por nodo, no 2×.
+- **"Todas las listas circulares logran O(1) en ambos extremos gracias al ciclo."**
+  Falso — como muestra la sección de listas circulares, el ciclo por sí solo no alcanza:
+  la circular simple (sin puntero `anterior`) sigue pagando O(n) para insertar al final,
+  porque no tiene forma barata de ubicar el último nodo. Solo la circular **doble**
+  logra O(1) en ambos extremos.
+- **"`get(i)` es O(1) en cualquier lista."** Solo en las respaldadas por arreglo. En
+  cualquier variante enlazada (simple, doble, circular o no), acceder por índice exige
+  recorrer nodos desde el extremo más cercano — O(n).
+
+## Comprueba lo aprendido
+
+Sobre una `ListaArreglo` vacía (capacidad inicial 2), ejecuta en orden:
+`insertarFinal(5)`, `insertarFinal(8)`, `insertarFinal(1)`, `insertarInicio(9)`,
+`insertarFinal(3)`.
+
+- ¿En qué operación exacta ocurre cada redimensionamiento, y a qué capacidad pasa el
+  arreglo cada vez?
+- ¿Cuál es el estado final del arreglo lógico (solo los `size()` elementos válidos)?
+- Sobre una `ListaEnlazadaSimple` con los elementos `[X, Y, Z]` (en ese orden), ¿cuántos
+  nodos hay que recorrer para ejecutar `insertarEn(2, W)`? ¿Y para `get(2)` después de
+  esa inserción?
+- Explica, sin ver el código de nuevo, por qué la lista circular simple logra O(1) en
+  `insertarInicio` pero no en `insertarFinal`, mientras que la circular doble logra O(1)
+  en ambas. ¿Qué referencia extra hace la diferencia?
+- ¿En qué escenario concreto elegirías `LinkedList` sobre `ArrayList` en Java, y en cuál
+  elegirías lo contrario? Justifica con la complejidad de la operación dominante en cada
+  caso.
+
+## Resumen
+
+- Todas las variantes de lista resuelven el mismo problema (colección ordenada con
+  duplicados), pero difieren en cómo almacenan sus elementos — contiguos en memoria
+  (arreglo) o dispersos y enlazados por punteros (nodos) — y esa diferencia determina
+  cada complejidad de la tabla de comparación.
+- El arreglo dinámico paga O(n) por desplazamiento al insertar fuera del final, y
+  amortiza el costo de redimensionar (duplicar capacidad) entre todas las inserciones al
+  final — visto en la traza real de `ListaArreglo`.
+- La lista enlazada simple es O(1) al insertar al inicio pero O(n) al insertar al final
+  (sin puntero a cola) y O(n) para cualquier acceso por índice, porque no hay atajo:
+  siempre hay que recorrer desde `cabeza`.
+- La lista doblemente enlazada agrega el puntero `anterior`, lo que compra inserción O(1)
+  en ambos extremos y recorrido hacia atrás genuinamente O(n) — la alternativa sin ese
+  puntero (recomenzar desde la cabeza en cada paso) es O(n²), demostrado con conteo real
+  de pasos (190 contra 20, con n=20).
+- Las listas circulares cierran el ciclo (`último.siguiente == cabeza`), pero eso no
+  regala O(1) automáticamente: la circular simple sigue necesitando O(n) para ubicar el
+  final sin puntero `anterior`; la circular doble sí logra O(1) en ambos extremos porque
+  `cabeza.anterior` ya es la cola.
+- En Java, `ArrayList` gana en memoria y en iteración; `LinkedList` solo gana cuando la
+  inserción ocurre en una posición ya conocida (por ejemplo, siempre al inicio) — medido
+  con datos reales, la diferencia puede ser de más de 60x a favor de `LinkedList` en ese
+  caso específico, e igual de real en contra suya cuando la posición hay que buscarla por
+  índice.

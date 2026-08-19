@@ -201,13 +201,13 @@ void postorden(Nodo nodo) {
 ### Código Java: recorrido por niveles
 
 ```java
-import java.util.LinkedList;
+import java.util.ArrayDeque;
 import java.util.Queue;
 
 void porNiveles(Nodo raiz) {
     if (raiz == null) return;
 
-    Queue<Nodo> cola = new LinkedList<>();
+    Queue<Nodo> cola = new ArrayDeque<>();
     cola.offer(raiz);
 
     while (!cola.isEmpty()) {

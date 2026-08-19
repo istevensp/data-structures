@@ -1,3 +1,13 @@
+// Cuatro Comparator escritos como clases con nombre (no lambdas), sobre la
+// misma clase Persona, más un quinto ejemplo con un modelo distinto
+// (Producto) — para mostrar la forma "clásica" de declarar un Comparator
+// antes de compararla con lambdas en otros archivos de este tópico.
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
 //////////////////////////////////////////////////////////////
 //Clase Base para los Ejemplos
 //////////////////////////////////////////////////////////////
@@ -21,7 +31,6 @@ class Persona {
 //////////////////////////////////////////////////////////////
 //Ejemplo 1: Comparator para Ordenar por Edad
 //////////////////////////////////////////////////////////////
-import java.util.Comparator;
 
 // Comparator personalizado para ordenar por edad
 class ComparadorPorEdad implements Comparator<Persona> {
@@ -34,11 +43,7 @@ class ComparadorPorEdad implements Comparator<Persona> {
 
 ///////////////////			USO			///////////////////
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-public class Main {
+class DemoOrdenarPorEdad {
     public static void main(String[] args) {
         // Crear lista de personas
         List<Persona> personas = new ArrayList<>();
@@ -85,7 +90,8 @@ class ComparadorPorNombreDescendente implements Comparator<Persona> {
 
 
 ///////////////////			USO			///////////////////
-public class Main {
+
+class DemoOrdenarPorNombre {
     public static void main(String[] args) {
         List<Persona> personas = new ArrayList<>();
         personas.add(new Persona("Alice", 30));
@@ -131,7 +137,8 @@ class ComparadorPorEdadYNombre implements Comparator<Persona> {
 
 
 ///////////////////			USO			///////////////////
-public class Main {
+
+class DemoOrdenarPorEdadYNombre {
     public static void main(String[] args) {
         List<Persona> personas = new ArrayList<>();
         personas.add(new Persona("Charlie", 30));
@@ -181,14 +188,9 @@ class ComparadorPorPrecio implements Comparator<Producto> {
 }
 
 
-
-
 ///////////////////			USO			///////////////////
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
-public class Main {
+class DemoOrdenarProductosPorPrecio {
     public static void main(String[] args) {
         List<Producto> productos = new ArrayList<>();
         productos.add(new Producto("Laptop", 1200.50, 10));

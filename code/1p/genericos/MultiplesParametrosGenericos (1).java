@@ -1,8 +1,15 @@
-/** usando letras del abecedario como parámetros de tipo en lugar de S, T, U, V, etc.:**/
+// Tres formas de usar más de un parámetro de tipo, comparando la
+// convención habitual (T, U, V...) contra nombres alternativos — para
+// mostrar que las letras son solo una convención de lectura, no una regla
+// del compilador.
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 
-public class MultiComparator<A, B, C, D, E, F, G> {
+/** Usando letras del abecedario como parámetros de tipo en lugar de S, T, U, V, etc. **/
+
+class MultiComparator<A, B, C, D, E, F, G> {
 
     // Almacenamos las funciones de comparación
     private final Function<A, B> firstComparator;
@@ -30,7 +37,9 @@ public class MultiComparator<A, B, C, D, E, F, G> {
         this.seventhComparator = seventhComparator;
     }
 
-    // Método para aplicar todas las funciones de comparación
+    // Encadena las 7 funciones: la salida de cada una es la entrada de la
+    // siguiente (A->B->C->D->E->F->G->A), mostrando que el tipo de retorno
+    // no tiene que ser el mismo que el de entrada en cada paso.
     public A applyAll(A input) {
         B result1 = firstComparator.apply(input);
         C result2 = secondComparator.apply(result1);
@@ -40,7 +49,9 @@ public class MultiComparator<A, B, C, D, E, F, G> {
         G result6 = sixthComparator.apply(result5);
         return seventhComparator.apply(result6);
     }
+}
 
+class DemoMultiComparator {
     public static void main(String[] args) {
         // Crear una instancia de MultiComparator con 7 funciones diferentes
         MultiComparator<Integer, String, Integer, Double, String, Long, Integer> comparator = new MultiComparator<>(
@@ -67,14 +78,18 @@ public class MultiComparator<A, B, C, D, E, F, G> {
 }
 
 /**
-•	En este código, en lugar de usar S, T, U, V, se usan las letras A, B, C, D, E, F, G como nombres de los parámetros de tipo.
-•	La lógica sigue siendo la misma: los tipos A, B, C, D, E, F, G son placeholders que representan tipos de datos genéricos que se pueden transformar de uno a otro usando las funciones definidas.
-**/
+ * En este código, en lugar de usar S, T, U, V, se usan las letras A, B, C, D, E, F, G
+ * como nombres de los parámetros de tipo. La lógica sigue siendo la misma: los tipos
+ * A, B, C, D, E, F, G son placeholders que representan tipos de datos genéricos que
+ * se pueden transformar de uno a otro usando las funciones definidas.
+ */
 
 
-/** Usamos "N" como parámetro de tipo genérico para una clase que trabaja con cadenas de texto (String), aunque convencionalmente "N" se usa para números: **/
+/** Usamos "N" como parámetro de tipo genérico para una clase que trabaja con cadenas
+de texto (String), aunque convencionalmente "N" se usa para números — el nombre de la
+letra no restringe en nada qué tipo real se puede usar. **/
 
-public class GenericExample<N> {
+class GenericExample<N> {
 
     // Atributo de tipo genérico N
     private N value;
@@ -93,34 +108,33 @@ public class GenericExample<N> {
     public void setValue(N value) {
         this.value = value;
     }
+}
 
+class DemoGenericExample {
     public static void main(String[] args) {
         // Crear una instancia de GenericExample con String (no numérico)
         GenericExample<String> stringExample = new GenericExample<>("Hola Mundo");
-        
+
         // Mostrar el valor
         System.out.println("Valor: " + stringExample.getValue());
 
         // Crear una instancia de GenericExample con Integer (numérico)
         GenericExample<Integer> integerExample = new GenericExample<>(123);
-        
+
         // Mostrar el valor
         System.out.println("Valor: " + integerExample.getValue());
     }
 }
-/** 
-Explicación del código:
-•	Aquí, "N" se utiliza como un parámetro de tipo genérico, pero no hay restricciones sobre qué tipo puede ser.
-•	En el primer caso, el parámetro genérico "N" es String (no numérico), mientras que en el segundo caso es Integer (numérico).
-**/
 
-/**Ejemplo usando "Z" para un tipo genérico y "O" para representar una Key en un mapa genérico:**/
+/**
+ * Aquí, "N" se utiliza como un parámetro de tipo genérico, pero no hay restricciones
+ * sobre qué tipo puede ser. En el primer caso, el parámetro genérico "N" es String
+ * (no numérico), mientras que en el segundo caso es Integer (numérico).
+ */
 
+/** Ejemplo usando "Z" para un tipo genérico y "O" para representar una Key en un mapa genérico **/
 
-import java.util.HashMap;
-import java.util.Map;
-
-public class CustomGenericExample<O, Z> {
+class CustomGenericExample<O, Z> {
 
     // Mapa genérico con clave de tipo O y valor de tipo Z
     private Map<O, Z> map;
@@ -146,7 +160,9 @@ public class CustomGenericExample<O, Z> {
             System.out.println("Clave (O): " + entry.getKey() + " - Valor (Z): " + entry.getValue());
         }
     }
+}
 
+public class Main {
     public static void main(String[] args) {
         // Crear una instancia del mapa usando String como clave y Integer como valor
         CustomGenericExample<String, Integer> example = new CustomGenericExample<>();
@@ -165,9 +181,8 @@ public class CustomGenericExample<O, Z> {
 }
 
 /**
-Explicación del código:
-
-O y Z son los parámetros genéricos en la clase CustomGenericExample. O se usa para la Key (clave) y Z se usa para el Value (valor).
-Creamos un mapa (HashMap) donde O es el tipo de clave y Z es el tipo de valor.
-El ejemplo usa un mapa donde las claves son String (representadas por O) y los valores son Integer (representados por Z).
-**/
+ * O y Z son los parámetros genéricos en la clase CustomGenericExample. O se usa para
+ * la Key (clave) y Z se usa para el Value (valor). Creamos un mapa (HashMap) donde O
+ * es el tipo de clave y Z es el tipo de valor. El ejemplo usa un mapa donde las claves
+ * son String (representadas por O) y los valores son Integer (representados por Z).
+ */

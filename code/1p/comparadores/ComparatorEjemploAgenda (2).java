@@ -1,8 +1,18 @@
-//////////////////////////////////////////////////////////////
-//Clase Contacto 
-//////////////////////////////////////////////////////////////
+// Seis Comparator<Contacto> distintos sobre el mismo modelo, para mostrar
+// que un solo objeto puede ordenarse por cualquier criterio con solo
+// cambiar el Comparator que se le pasa a Collections.sort — sin tocar
+// Contacto ni escribir un método de orden distinto por cada campo.
+
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+
+//////////////////////////////////////////////////////////////
+//Clase Contacto
+//////////////////////////////////////////////////////////////
 
 class Contacto {
     String nombreCompleto; // Nombre completo del contacto
@@ -47,9 +57,6 @@ class Contacto {
 
 ///////////////////			Ordenar por Nombre Completo:
 
-
-import java.util.Comparator;
-
 class ComparadorPorNombreCompleto implements Comparator<Contacto> {
     @Override
     public int compare(Contacto c1, Contacto c2) {
@@ -78,21 +85,22 @@ class ComparadorPorAtributosAdicionales implements Comparator<Contacto> {
 
 ///////////////////			Ordenar por Fecha de Cumpleaños más Cercana:
 
-import java.time.LocalDate;
-import java.time.MonthDay;
-
 class ComparadorPorCumpleanos implements Comparator<Contacto> {
     @Override
     public int compare(Contacto c1, Contacto c2) {
-        MonthDay hoy = MonthDay.now(); // Fecha actual
-        MonthDay cumple1 = MonthDay.from(c1.fechaNacimiento);
-        MonthDay cumple2 = MonthDay.from(c2.fechaNacimiento);
+        LocalDate hoy = LocalDate.now();
+        LocalDate proximoCumple1 = proximoCumpleanos(c1.fechaNacimiento, hoy);
+        LocalDate proximoCumple2 = proximoCumpleanos(c2.fechaNacimiento, hoy);
+        return proximoCumple1.compareTo(proximoCumple2);
+    }
 
-        // Calcular días restantes para cada cumpleaños
-        int diasRestantes1 = (cumple1.isBefore(hoy) ? cumple1.plusYears(1) : cumple1).compareTo(hoy);
-        int diasRestantes2 = (cumple2.isBefore(hoy) ? cumple2.plusYears(1) : cumple2).compareTo(hoy);
-
-        return Integer.compare(diasRestantes1, diasRestantes2);
+    // Reemplaza el año de nacimiento por el año actual. Si esa fecha ya pasó
+    // este año, la mueve al año próximo — así "más cercano" siempre mira
+    // hacia adelante, nunca hacia un cumpleaños que ya ocurrió. Se usa
+    // LocalDate (no MonthDay) porque MonthDay no tiene plusYears().
+    private static LocalDate proximoCumpleanos(LocalDate fechaNacimiento, LocalDate hoy) {
+        LocalDate esteAno = fechaNacimiento.withYear(hoy.getYear());
+        return esteAno.isBefore(hoy) ? esteAno.plusYears(1) : esteAno;
     }
 }
 
@@ -115,15 +123,7 @@ class ComparadorPorTipoDeContacto implements Comparator<Contacto> {
 }
 
 
-
-
 ///////////////////			USO			///////////////////
-
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 public class Main {
     public static void main(String[] args) {

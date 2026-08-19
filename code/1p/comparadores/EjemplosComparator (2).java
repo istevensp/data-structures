@@ -1,4 +1,12 @@
-//Ejemplos Prácticos con Comparator
+// Seis formas de comparar/ordenar la misma clase Persona, de la más
+// explícita (clase separada) a la más concisa (lambda, referencia a
+// método, Comparator.comparing encadenado) — y su uso dentro de otras
+// estructuras (TreeSet) que dependen de un orden para funcionar.
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.TreeSet;
 
 //////////////////////////////////////////////////////////////
 //1. Clase Persona para Ejemplos
@@ -21,7 +29,6 @@ class Persona {
 //2. Implementación Básica de Comparator como Clase Separada
 //Comparar Personas por Nombre
 //////////////////////////////////////////////////////////////
-import java.util.Comparator;
 
 class ComparadorPorNombre implements Comparator<Persona> {
     @Override
@@ -30,7 +37,7 @@ class ComparadorPorNombre implements Comparator<Persona> {
     }
 }
 
-public class Main {
+class DemoOrdenPorNombre {
     public static void main(String[] args) {
         List<Persona> personas = new ArrayList<>();
         personas.add(new Persona("Alice", 30));
@@ -51,7 +58,7 @@ public class Main {
 //Comparar Personas por Edad Descendente
 //////////////////////////////////////////////////////////////
 
-public class Main {
+class DemoOrdenPorEdadDescendente {
     public static void main(String[] args) {
         List<Persona> personas = new ArrayList<>();
         personas.add(new Persona("Alice", 30));
@@ -72,16 +79,17 @@ public class Main {
 //////////////////////////////////////////////////////////////
 //4. Comparar por Múltiples Criterios con Comparator
 //Ordenar Primero por Edad y Luego por Nombre
-import java.util.Comparator;
+//////////////////////////////////////////////////////////////
 
-public class Main {
+class DemoOrdenPorEdadYNombre {
     public static void main(String[] args) {
         List<Persona> personas = new ArrayList<>();
         personas.add(new Persona("Charlie", 35));
         personas.add(new Persona("Alice", 35));
         personas.add(new Persona("Bob", 25));
 
-        // Ordenar por edad y luego por nombre
+        // Ordenar por edad y luego por nombre: thenComparing solo se usa
+        // para desempatar cuando comparingInt ya dio 0 (misma edad).
         personas.sort(Comparator.comparingInt((Persona p) -> p.edad)
                                 .thenComparing(p -> p.nombre));
         System.out.println("Orden por edad y luego por nombre: " + personas);
@@ -95,15 +103,16 @@ public class Main {
 //////////////////////////////////////////////////////////////
 //5. Comparadores con Referencias a Métodos
 //Comparar Personas por Longitud del Nombre
+//////////////////////////////////////////////////////////////
 
-public class Main {
+class DemoOrdenPorLongitudDeNombre {
     public static void main(String[] args) {
         List<Persona> personas = new ArrayList<>();
         personas.add(new Persona("Alice", 30));
         personas.add(new Persona("Bob", 25));
         personas.add(new Persona("Charlie", 35));
 
-        // Ordenar por longitud del nombre usando una referencia a método
+        // Ordenar por longitud del nombre
         personas.sort(Comparator.comparingInt(p -> p.nombre.length()));
         System.out.println("Orden por longitud del nombre: " + personas);
     }
@@ -117,11 +126,13 @@ public class Main {
 //////////////////////////////////////////////////////////////
 //6. Usar Comparadores en Estructuras de Datos
 //Usar un TreeSet con un Comparator
+//////////////////////////////////////////////////////////////
 
-import java.util.TreeSet;
-
-public class Main {
+class DemoTreeSetConComparator {
     public static void main(String[] args) {
+        // Un TreeSet necesita saber cómo ordenar sus elementos para poder
+        // ubicarlos en el árbol — sin este Comparator, Persona tendría que
+        // implementar Comparable<Persona> para poder entrar en un TreeSet.
         TreeSet<Persona> personas = new TreeSet<>(
             Comparator.comparingInt(p -> p.edad) // Comparador por edad
         );

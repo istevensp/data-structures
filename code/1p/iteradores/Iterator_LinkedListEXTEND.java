@@ -33,10 +33,16 @@ class DoublyLinkedList<T> {
 
     public class DoublyLinkedListIterator implements Iterator<T> {
         private Node<T> current = head;
+        // Último nodo devuelto por next(): 'current' solo no basta para
+        // implementar previous() porque, tras el último next(), current
+        // pasa a ser null (ya no hay siguiente) — sin este respaldo,
+        // llamar previous() justo después no tendría desde dónde retroceder.
+        private Node<T> lastReturned = null;
 
         // Reinicia el iterador al inicio
         public void reset() {
             current = head;
+            lastReturned = null;
         }
 
         // Devuelve el siguiente elemento sin avanzar
@@ -45,11 +51,15 @@ class DoublyLinkedList<T> {
             return current.data;
         }
 
-        // Retrocede al elemento anterior
+        // Retrocede al elemento anterior. Si el recorrido hacia adelante ya
+        // terminó (current == null), retrocede desde el último nodo
+        // devuelto por next(), no desde current.
         public T previous() {
-            if (current == null || current.prev == null) throw new IllegalStateException("No previous element");
-            current = current.prev;
-            return current.data;
+            Node<T> desde = (current != null) ? current.prev : lastReturned;
+            if (desde == null) throw new IllegalStateException("No previous element");
+            current = desde;
+            lastReturned = desde;
+            return desde.data;
         }
 
         // Cuenta los elementos restantes
@@ -72,6 +82,7 @@ class DoublyLinkedList<T> {
         public T next() {
             if (!hasNext()) throw new IllegalStateException("No more elements");
             T data = current.data;
+            lastReturned = current;
             current = current.next;
             return data;
         }

@@ -13,7 +13,7 @@ específico (por ejemplo, "todos los clientes de Guayaquil") sin escribir un mé
 para cada criterio. Los comparadores resuelven ese problema generalizando el criterio de
 búsqueda u orden.
 
-## La interfaz `Comparator<E>`
+## La interfaz `Comparator<T>`
 
 Provee un orden para colecciones de objetos que no tienen un orden natural, mediante un
 único método:
@@ -50,3 +50,397 @@ puede buscar por cualquier criterio, sin necesitar un método distinto por atrib
 
 Las tres formas son equivalentes en comportamiento; la lambda es preferible cuando el
 comparador es simple y de un solo uso.
+
+El comparador `cmpByCity` de arriba es válido para `findAll` (solo necesita distinguir
+"coincide" de "no coincide"), pero **no cumple el contrato de `Comparator`** — nunca
+devuelve un valor negativo, así que `compare(a, b)` y `compare(b, a)` pueden dar ambos
+`1` cuando las ciudades difieren. No lo reutilices para `sort()` o `TreeSet`: para ordenar
+de verdad, el comparador debe devolver negativo/cero/positivo de forma consistente con
+la tabla de arriba (por ejemplo, comparando con `compareTo` sobre un campo ordenable). La
+sección [El contrato de `Comparator`, en detalle](#el-contrato-de-comparatort-en-detalle)
+retoma este mismo comparador para mostrar, con código real, qué sale mal si se usa para
+ordenar.
+
+## Ejemplo completo: ordenar una lista de personas
+
+El siguiente programa reutiliza un único `Comparator<Persona>` con tres implementaciones
+distintas (clase anónima, lambda, y lambda con desempate manual) sobre la misma lista,
+imprimiendo el resultado después de cada `sort()` para que el antes/después quede visible.
+
+```java
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+class Persona {
+    String nombre;
+    int edad;
+    String ciudad;
+
+    Persona(String nombre, int edad, String ciudad) {
+        this.nombre = nombre;
+        this.edad = edad;
+        this.ciudad = ciudad;
+    }
+
+    @Override
+    public String toString() {
+        return nombre + "(" + edad + ", " + ciudad + ")";
+    }
+}
+
+public class EjemploOrdenPersonas {
+    public static void main(String[] args) {
+        List<Persona> personas = new ArrayList<>();
+        personas.add(new Persona("Elena", 28, "Quito"));
+        personas.add(new Persona("Bruno", 35, "Cuenca"));
+        personas.add(new Persona("Ana", 28, "Guayaquil"));
+        personas.add(new Persona("Diego", 19, "Quito"));
+        personas.add(new Persona("Carla", 35, "Loja"));
+
+        System.out.println("Original:      " + personas);
+
+        // Comparator como clase anónima: por edad ascendente.
+        Comparator<Persona> porEdad = new Comparator<Persona>() {
+            @Override
+            public int compare(Persona a, Persona b) {
+                return Integer.compare(a.edad, b.edad);
+            }
+        };
+        personas.sort(porEdad);
+        System.out.println("Por edad:      " + personas);
+
+        // Comparator como lambda: por nombre alfabético.
+        Comparator<Persona> porNombre = (a, b) -> a.nombre.compareTo(b.nombre);
+        personas.sort(porNombre);
+        System.out.println("Por nombre:    " + personas);
+
+        // Desempate manual: por edad y, si empatan, por nombre.
+        Comparator<Persona> porEdadLuegoNombre = (a, b) -> {
+            int resultado = Integer.compare(a.edad, b.edad);
+            if (resultado != 0) return resultado;
+            return a.nombre.compareTo(b.nombre);
+        };
+        personas.sort(porEdadLuegoNombre);
+        System.out.println("Edad+nombre:   " + personas);
+    }
+}
+```
+
+Salida real:
+
+```
+Original:      [Elena(28, Quito), Bruno(35, Cuenca), Ana(28, Guayaquil), Diego(19, Quito), Carla(35, Loja)]
+Por edad:      [Diego(19, Quito), Elena(28, Quito), Ana(28, Guayaquil), Bruno(35, Cuenca), Carla(35, Loja)]
+Por nombre:    [Ana(28, Guayaquil), Bruno(35, Cuenca), Carla(35, Loja), Diego(19, Quito), Elena(28, Quito)]
+Edad+nombre:   [Diego(19, Quito), Ana(28, Guayaquil), Elena(28, Quito), Bruno(35, Cuenca), Carla(35, Loja)]
+```
+
+Un detalle fácil de pasar por alto en la fila "Por edad": Elena (28) queda **antes** que
+Ana (28) aunque alfabéticamente Ana va primero — el comparador solo mira `edad`, así que
+entre dos personas de la misma edad se conserva el orden que ya traían en la lista
+(Elena aparecía antes que Ana en el `Original`). Eso no es casualidad: `List.sort()` en
+Java usa un algoritmo **estable** (TimSort), que nunca reordena elementos que el
+comparador considera iguales. La fila `Edad+nombre` muestra la alternativa cuando ese
+orden importa: agregar `nombre` como criterio de desempate deja a Ana antes que Elena.
+
+## La API fluida moderna: `comparing`, `thenComparing`, `reversed`
+
+Escribir `(a, b) -> Integer.compare(a.edad, b.edad)` a mano funciona, pero
+`Comparator.comparing(...)` (y sus variantes `comparingInt`/`comparingDouble`/`comparingLong`
+para tipos primitivos, que evitan el autoboxing de `comparing`) generan el mismo
+comparador a partir únicamente del campo a extraer — sin escribir la llamada a
+`compare`/`compareTo` explícitamente. `thenComparing` encadena un criterio de desempate, y
+`reversed()` invierte cualquier comparador ya construido.
+
+```java
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+class PersonaF {
+    String nombre;
+    int edad;
+    String ciudad;
+
+    PersonaF(String nombre, int edad, String ciudad) {
+        this.nombre = nombre;
+        this.edad = edad;
+        this.ciudad = ciudad;
+    }
+
+    @Override
+    public String toString() {
+        return nombre + "(" + edad + ", " + ciudad + ")";
+    }
+}
+
+public class EjemploComparatorFluido {
+    public static void main(String[] args) {
+        List<PersonaF> personas = new ArrayList<>();
+        personas.add(new PersonaF("Elena", 28, "Quito"));
+        personas.add(new PersonaF("Bruno", 35, "Cuenca"));
+        personas.add(new PersonaF("Ana", 28, "Guayaquil"));
+        personas.add(new PersonaF("Diego", 19, "Quito"));
+        personas.add(new PersonaF("Carla", 35, "Loja"));
+
+        // comparing() + thenComparing(): por edad y, si empatan, por nombre.
+        Comparator<PersonaF> porEdadLuegoNombre =
+                Comparator.comparingInt((PersonaF p) -> p.edad)
+                          .thenComparing(p -> p.nombre);
+        personas.sort(porEdadLuegoNombre);
+        System.out.println("comparing+thenComparing: " + personas);
+
+        // reversed(): invierte el orden que ya tenía el comparador.
+        personas.sort(porEdadLuegoNombre.reversed());
+        System.out.println("reversed():              " + personas);
+
+        // comparing() sobre un campo String usa el orden natural de String.
+        personas.sort(Comparator.comparing(p -> p.ciudad));
+        System.out.println("comparing(ciudad):       " + personas);
+
+        // thenComparing con tres niveles: ciudad, luego edad, luego nombre.
+        personas.sort(Comparator.comparing((PersonaF p) -> p.ciudad)
+                                 .thenComparingInt(p -> p.edad)
+                                 .thenComparing(p -> p.nombre));
+        System.out.println("ciudad+edad+nombre:      " + personas);
+    }
+}
+```
+
+Salida real:
+
+```
+comparing+thenComparing: [Diego(19, Quito), Ana(28, Guayaquil), Elena(28, Quito), Bruno(35, Cuenca), Carla(35, Loja)]
+reversed():              [Carla(35, Loja), Bruno(35, Cuenca), Elena(28, Quito), Ana(28, Guayaquil), Diego(19, Quito)]
+comparing(ciudad):       [Bruno(35, Cuenca), Ana(28, Guayaquil), Carla(35, Loja), Elena(28, Quito), Diego(19, Quito)]
+ciudad+edad+nombre:      [Bruno(35, Cuenca), Ana(28, Guayaquil), Carla(35, Loja), Diego(19, Quito), Elena(28, Quito)]
+```
+
+Nótese que `porEdadLuegoNombre.reversed()` no es lo mismo que invertir cada criterio por
+separado: invierte el **resultado final** del comparador ya combinado. Por eso en la fila
+`reversed()` el grupo de 35 años (Carla, Bruno) queda antes que el de 28, pero *dentro*
+de cada grupo de edad el orden de nombre también se invierte (Bruno antes que Carla, no
+Carla antes que Bruno) — todo el comparador compuesto se invierte de una sola vez, no
+solo su primer criterio.
+
+## `Comparable<T>` vs. `Comparator<T>`
+
+Una clase implementa `Comparable<T>` cuando tiene un **único orden natural** que tiene
+sentido casi siempre que se use esa clase (por ejemplo, `String` ordena alfabéticamente,
+`Integer` ordena numéricamente). Ese orden se define una sola vez, dentro de la clase,
+con el método `compareTo`. Un `Comparator<T>` externo, en cambio, no requiere modificar
+la clase y permite definir **tantos órdenes alternativos como haga falta** — sirve para
+cualquier criterio que no sea "el" orden natural, o para clases que no controlas (no
+puedes agregarle `compareTo` a una clase de una librería externa).
+
+```java
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
+// Implementa Comparable<PersonaC>: define UN único orden "natural" para la
+// clase — por edad. Esa decisión vive dentro de la clase misma.
+class PersonaC implements Comparable<PersonaC> {
+    String nombre;
+    int edad;
+
+    PersonaC(String nombre, int edad) {
+        this.nombre = nombre;
+        this.edad = edad;
+    }
+
+    @Override
+    public int compareTo(PersonaC otra) {
+        return Integer.compare(this.edad, otra.edad);
+    }
+
+    @Override
+    public String toString() {
+        return nombre + "(" + edad + ")";
+    }
+}
+
+public class EjemploComparableVsComparator {
+    public static void main(String[] args) {
+        List<PersonaC> personas = new ArrayList<>();
+        personas.add(new PersonaC("Elena", 28));
+        personas.add(new PersonaC("Bruno", 35));
+        personas.add(new PersonaC("Ana", 41));
+        personas.add(new PersonaC("Diego", 19));
+
+        // Collections.sort(lista) / lista.sort(null) usan compareTo(): el
+        // orden natural definido dentro de PersonaC (por edad).
+        Collections.sort(personas);
+        System.out.println("Orden natural (Comparable, por edad): " + personas);
+
+        // Comparator.naturalOrder() delega en ese mismo compareTo().
+        personas.sort(Comparator.naturalOrder());
+        System.out.println("naturalOrder():                       " + personas);
+
+        // Comparator.reverseOrder() invierte el orden natural.
+        personas.sort(Comparator.reverseOrder());
+        System.out.println("reverseOrder():                       " + personas);
+
+        // Un Comparator externo define OTRO orden -- por nombre -- sin tocar
+        // PersonaC ni su compareTo(). PersonaC puede tener tantos
+        // Comparator externos como criterios de orden hagan falta.
+        Comparator<PersonaC> porNombre = (a, b) -> a.nombre.compareTo(b.nombre);
+        personas.sort(porNombre);
+        System.out.println("Comparator externo (por nombre):      " + personas);
+    }
+}
+```
+
+Salida real:
+
+```
+Orden natural (Comparable, por edad): [Diego(19), Elena(28), Bruno(35), Ana(41)]
+naturalOrder():                       [Diego(19), Elena(28), Bruno(35), Ana(41)]
+reverseOrder():                       [Ana(41), Bruno(35), Elena(28), Diego(19)]
+Comparator externo (por nombre):      [Ana(41), Bruno(35), Diego(19), Elena(28)]
+```
+
+| | `Comparable<T>` | `Comparator<T>` |
+|---|---|---|
+| ¿Dónde se define? | Dentro de la clase (`compareTo`) | Fuera de la clase, como objeto aparte |
+| ¿Cuántos órdenes permite? | Uno solo — el "natural" | Tantos como se necesiten |
+| ¿Requiere modificar la clase? | Sí | No |
+| ¿Sirve para clases que no controlas? | No | Sí |
+| Lo usan automáticamente... | `Collections.sort(lista)`, `TreeSet`/`TreeMap` sin comparador explícito, `Comparator.naturalOrder()` | `lista.sort(cmp)`, `TreeSet<>(cmp)`, cualquier método que reciba un `Comparator` |
+
+## El contrato de `Comparator<T>`, en detalle
+
+La tabla de negativo/cero/positivo de la primera sección no es solo una convención de
+estilo — para que `sort()`, `TreeSet` o `TreeMap` funcionen correctamente, el comparador
+debe cumplir dos propiedades matemáticas:
+
+- **Signo consistente (antisimetría):** para cualquier `a` y `b`,
+  `sgn(compare(a, b)) == -sgn(compare(b, a))`. Si `a` es "mayor" que `b`, entonces `b`
+  debe ser "menor" que `a` — con el signo exactamente invertido, no el mismo signo.
+- **Transitividad:** si `compare(a, b) > 0` y `compare(b, c) > 0`, entonces
+  `compare(a, c) > 0` (y lo mismo para `<` y para `==`). El orden debe ser consistente en
+  cadena: si `a > b` y `b > c`, no puede resultar que `c > a`.
+
+Los algoritmos de ordenamiento asumen ambas propiedades para poder comparar solo *algunos*
+pares de elementos y aun así inferir el orden completo — si el comparador miente, el
+resultado no es "un poco menos preciso": puede quedar en cualquier estado, sin lanzar
+ningún error que lo avise.
+
+```java
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Random;
+
+public class EjemploContratoRoto {
+    public static void main(String[] args) {
+        // Parte 1: el comparador de la seccion anterior (el que solo
+        // distingue "misma ciudad" de "distinta ciudad") viola el signo
+        // consistente: compare(a,b) y compare(b,a) dan AMBOS positivo
+        // cuando las ciudades difieren, en vez de tener signos opuestos.
+        Comparator<String> cmpRoto = (a, b) -> a.equals(b) ? 0 : 1;
+        System.out.println("compare(\"Quito\",\"Loja\") = " + cmpRoto.compare("Quito", "Loja"));
+        System.out.println("compare(\"Loja\",\"Quito\") = " + cmpRoto.compare("Loja", "Quito"));
+
+        // Parte 2: efecto real sobre sort() con un comparador que rompe la
+        // TRANSITIVIDAD -- trata el valor 3 como caso especial "siempre
+        // menor", sin importar contra qué se compare.
+        List<Integer> datos = new ArrayList<>();
+        for (int i = 0; i < 40; i++) datos.add(i);
+        Collections.shuffle(datos, new Random(1));
+
+        Comparator<Integer> cmpTransitividadRota = (a, b) -> {
+            if (a.equals(b)) return 0;
+            if (a == 3) return -1;
+            if (b == 3) return 1;
+            return a < b ? -1 : 1;
+        };
+
+        datos.sort(cmpTransitividadRota);
+        System.out.println("Resultado de sort() con comparador roto:");
+        System.out.println(datos);
+    }
+}
+```
+
+Salida real:
+
+```
+compare("Quito","Loja") = 1
+compare("Loja","Quito") = 1
+Resultado de sort() con comparador roto:
+[3, 0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+```
+
+La primera parte confirma el signo inconsistente: ambas llamadas dan `1`, cuando una
+debería dar el negativo de la otra. La segunda parte muestra el daño real: para todo
+número salvo el `3`, el resultado quedó perfectamente ordenado (`0, 1, 2, 4, 5, ...`) —
+pero el `3` terminó **al principio de la lista**, en vez de entre el `2` y el `4` donde
+correspondía, porque el comparador lo trata como "siempre menor" sin ser consistente con
+cómo compara al resto de los números entre sí. Lo más peligroso de este tipo de error es
+que **no lanza ninguna excepción** — el programa sigue corriendo con una lista mal
+ordenada. (Para arreglos suficientemente grandes, TimSort — el algoritmo detrás de
+`sort()` en Java — a veces sí detecta la inconsistencia internamente durante el proceso de
+mezcla y lanza `IllegalArgumentException: Comparison method violates its general
+contract!`; pero como acaba de mostrar el ejemplo, esa detección no está garantizada, así
+que no hay que depender de ella para descubrir un comparador roto.)
+
+## Errores frecuentes
+
+- **"Un comparador que solo distingue 'coincide'/'no coincide' (como `cmpByCity`) sirve
+  igual para buscar y para ordenar."** Falso — ver la sección anterior. Sirve para
+  `findAll` (solo necesita un `0` cuando coincide), pero rompe el signo consistente que
+  `sort()`/`TreeSet` necesitan.
+- **"Si el comparador tiene un error, `sort()` lo va a detectar y lanzar una excepción."**
+  A veces sí (Java puede lanzar `IllegalArgumentException` para arreglos grandes), pero no
+  es una garantía — el ejemplo de arriba ordena 40 elementos con un comparador roto y
+  **no** lanza nada; simplemente deja un elemento fuera de lugar.
+- **"`Integer.compare(a, b)` es lo mismo que `a - b`."** Casi siempre, pero `a - b` puede
+  desbordar (*overflow*) cuando `a` y `b` tienen signos opuestos y magnitudes grandes —
+  por ejemplo, `Integer.MIN_VALUE - 1` da un resultado positivo por desbordamiento, aunque
+  matemáticamente sea negativo. `Integer.compare` no tiene ese problema; es la forma
+  segura.
+- **"`Comparable` y `Comparator` son intercambiables, solo cambia el nombre."** No —
+  `Comparable<T>` es un único método `compareTo` dentro de la propia clase (un solo orden
+  posible); `Comparator<T>` es un objeto aparte, y una misma clase puede tener varios.
+- **"`reversed()` invierte cada criterio de un `thenComparing` por separado."** No —
+  invierte el resultado final del comparador ya compuesto, como se ve en el ejemplo de la
+  API fluida: los grupos completos cambian de orden, pero el criterio de desempate
+  *dentro* de cada grupo también queda invertido, no preservado.
+
+## Comprueba lo aprendido
+
+- Con la clase `Persona` (nombre, edad, ciudad) de esta página: escribe un `Comparator`
+  con la API fluida que ordene primero por `ciudad` ascendente y, dentro de la misma
+  ciudad, por `edad` descendente. ¿Qué combinación de `comparing`/`thenComparing`/
+  `reversed` lo logra?
+- ¿Por qué `Collections.sort(lista)` (sin argumento de comparador) solo compila si los
+  elementos de `lista` implementan `Comparable`? ¿Qué error de compilación esperarías si
+  `Persona` no implementara esa interfaz y se intentara igual?
+- Un comparador `(a, b) -> a.getPuntaje() > b.getPuntaje() ? 1 : 0` (nunca devuelve
+  negativo) se usa para ordenar una lista de jugadores. Sin ejecutarlo: ¿qué propiedad del
+  contrato viola? ¿Cómo lo arreglarías con `Integer.compare` o `Double.compare`?
+- Explica con tus palabras por qué el `3` terminó al principio de la lista en el ejemplo
+  de `EjemploContratoRoto`, en vez de simplemente quedar "un poco mal ubicado" cerca de
+  donde debía estar.
+
+## Resumen
+
+- `Comparator<T>` generaliza un criterio de orden o búsqueda en un único método
+  `compare(a, b)` que devuelve negativo/cero/positivo — se puede escribir como clase con
+  nombre, clase anónima, o lambda; las tres formas son equivalentes en comportamiento.
+- Un comparador que solo distingue "coincide"/"no coincide" (nunca negativo) es válido
+  para búsquedas tipo `findAll`, pero no para ordenar: viola el contrato.
+- La API fluida (`Comparator.comparing`/`comparingInt`/`thenComparing`/`reversed`,
+  `naturalOrder`/`reverseOrder`) construye comparadores completos a partir del campo a
+  extraer, sin escribir `compare`/`compareTo` a mano.
+- `Comparable<T>` define un único orden natural dentro de la clase (`compareTo`);
+  `Comparator<T>` define órdenes externos, tantos como se necesiten, sin modificar la
+  clase — ambos pueden coexistir sobre el mismo tipo.
+- El contrato de `Comparator` exige signo consistente
+  (`sgn(compare(a,b)) == -sgn(compare(b,a))`) y transitividad. Violarlo no siempre lanza
+  una excepción — puede simplemente producir una lista mal ordenada sin ningún aviso, como
+  demuestra el ejemplo con el valor `3` tratado como caso especial.

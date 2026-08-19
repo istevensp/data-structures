@@ -22,6 +22,80 @@ se escribe una sola vez y el tipo real se define al usarla.
 2. **Usando parámetros de tipo (genéricos)** — introducidos en Java en 2004 para dar
    seguridad de tipo en **tiempo de compilación**, sin casts.
 
+La siguiente sección demuestra esa diferencia con código real, no solo en teoría.
+
+## Por qué importan: el mismo error, dos momentos distintos
+
+### Con `Object`: el error se descubre en tiempo de ejecución
+
+```java
+class CajaObjeto {
+    private Object contenido;
+    public void set(Object contenido) { this.contenido = contenido; }
+    public Object get() { return contenido; }
+}
+
+public class DemoCastException {
+    public static void main(String[] args) {
+        CajaObjeto caja = new CajaObjeto();
+        caja.set(123); // guardamos un Integer -- el compilador no se queja
+        System.out.println("Antes del cast...");
+        String texto = (String) caja.get(); // compila bien, pero...
+        System.out.println(texto);
+    }
+}
+```
+
+Este código **compila sin errores ni advertencias** — `set` recibe `Object`, así que un
+`Integer` es perfectamente válido; `get` devuelve `Object`, así que castearlo a `String`
+también es válido para el compilador, que no tiene forma de saber qué se guardó
+realmente. Salida real al ejecutarlo:
+
+```
+Antes del cast...
+Exception in thread "main" java.lang.ClassCastException: class java.lang.Integer cannot be cast to class java.lang.String (java.lang.Integer and java.lang.String are in module java.base of loader 'bootstrap')
+	at DemoCastException.main(DemoCastException.java:12)
+```
+
+El programa imprime la primera línea, y **recién en tiempo de ejecución**, al llegar al
+cast, revienta con `ClassCastException`. En un programa real ese `set(123)` y ese
+`(String) caja.get()` podrían estar en archivos distintos, escritos por personas
+distintas, y el error solo aparecería si esa ruta de código llega a ejecutarse — podría
+pasar desapercibido durante meses.
+
+### Con genéricos: el mismo error, atrapado al compilar
+
+```java
+class Caja<T> {
+    private T contenido;
+    public void set(T contenido) { this.contenido = contenido; }
+    public T get() { return contenido; }
+}
+
+public class DemoCajaGenericaError {
+    public static void main(String[] args) {
+        Caja<String> c = new Caja<>();
+        c.set(123); // ERROR esperado: no compila
+    }
+}
+```
+
+Error real de `javac` al intentar compilar esto:
+
+```
+DemoCajaGenericaError.java:10: error: incompatible types: int cannot be converted to String
+        c.set(123); // ERROR esperado: no compila
+              ^
+1 error
+```
+
+El programa **nunca llega a ejecutarse** — ni siquiera se genera el `.class`. `Caja<String>`
+le dice al compilador "este `T` es `String`", y `set` queda tipado como
+`void set(String contenido)` para esa instancia concreta; pasarle un `int` (que se
+autoboxearía a `Integer`) es un error de tipos detectable sin correr una sola línea. Esta
+es la ventaja central de los genéricos: mueven el mismo error de "tiempo de ejecución,
+tal vez" a "tiempo de compilación, siempre".
+
 ## Clases genéricas
 
 ```java
@@ -35,16 +109,212 @@ public class Box<T> {
 
 `T` es un **parámetro de tipo** (siempre entre `<>`); `Box` es una **clase genérica**. Al
 usarla, cada instancia fija su propio tipo real — `Box<String>`, `Box<Integer>`,
-`Box<Student>` — y `getArticle()` devuelve ese tipo directamente, sin cast.
+`Box<Student>` — y `getArticle()` devuelve ese tipo directamente, sin cast:
 
-## Métodos e interfaces genéricos
+```java
+class Box2<T> {
+    private T article;
+    public Box2(T article) { this.article = article; }
+    public T getArticle() { return article; }
+    public void setArticle(T article) { this.article = article; }
+}
 
-No solo las clases pueden ser genéricas:
+public class DemoCajaGenerica {
+    public static void main(String[] args) {
+        Box2<String> cajaTexto = new Box2<>("Hola Mundo");
+        System.out.println(cajaTexto.getArticle());
 
-- **Métodos genéricos**: `public static <T> void imprimir(T objeto)` funciona con
-  cualquier tipo sin necesitar una versión por tipo.
-- **Interfaces genéricas**: `public interface Comparador<T> { boolean comparar(T a, T b); }`
-  permite que cada clase que la implemente trabaje con el tipo que le corresponda.
+        Box2<Integer> cajaNumero = new Box2<>(123);
+        System.out.println(cajaNumero.getArticle());
+    }
+}
+```
+
+Salida real:
+
+```
+Hola Mundo
+123
+```
+
+(`Box2` es el mismo `Box<T>` de arriba, renombrado solo para poder compilar ambos
+bloques de esta página en el mismo directorio sin que sus nombres choquen — el
+comportamiento es idéntico.)
+
+## Métodos genéricos
+
+No solo las clases pueden ser genéricas: un método puede declarar su propio parámetro de
+tipo, independiente de la clase que lo contiene. El `<T>` antes del tipo de retorno es lo
+que lo declara:
+
+```java
+public class DemoMetodoGenerico2 {
+    public static <T> T primero(T[] arreglo) {
+        return arreglo[0];
+    }
+
+    public static void main(String[] args) {
+        String[] nombres = {"Ana", "Beto", "Carla"};
+        Integer[] numeros = {10, 20, 30};
+
+        System.out.println(primero(nombres));
+        System.out.println(primero(numeros));
+    }
+}
+```
+
+Salida real:
+
+```
+Ana
+10
+```
+
+Un solo método `primero` funciona con `String[]` y con `Integer[]` — el compilador
+infiere `T` a partir del arreglo que se le pasa en cada llamada, y el tipo de retorno de
+`primero(nombres)` es `String`, no `Object`, sin cast de por medio.
+
+## Interfaces genéricas
+
+Las interfaces también pueden parametrizarse, y cada clase que las implemente elige el
+tipo con el que trabaja:
+
+```java
+interface Transformador<T, R> {
+    R transformar(T entrada);
+}
+
+class LongitudTexto implements Transformador<String, Integer> {
+    public Integer transformar(String entrada) {
+        return entrada.length();
+    }
+}
+
+public class DemoTransformador {
+    public static void main(String[] args) {
+        Transformador<String, Integer> t = new LongitudTexto();
+        System.out.println(t.transformar("Estructuras de datos"));
+    }
+}
+```
+
+Salida real:
+
+```
+20
+```
+
+`Transformador<T, R>` no fija de antemano qué tipos son de entrada y de salida —
+`LongitudTexto` decide que su `T` es `String` y su `R` es `Integer`; otra clase que
+implemente la misma interfaz podría elegir `Transformador<Integer, String>` u otra
+combinación cualquiera.
+
+## Tipos acotados (bounded types)
+
+A veces el cuerpo de una clase o método genérico necesita llamar a un método que **no**
+existe en `Object` — solo existe en cierta familia de tipos. Un límite superior
+(`<T extends Number>`) le dice al compilador "acepto cualquier `T`, pero solo si es
+`Number` o una subclase", lo que habilita usar los métodos de `Number` dentro del cuerpo.
+
+```java
+class Sumador<T extends Number> {
+    public double sumar(T a, T b) {
+        return a.doubleValue() + b.doubleValue();
+    }
+}
+
+public class DemoSumadorAcotado {
+    public static void main(String[] args) {
+        Sumador<Integer> s1 = new Sumador<>();
+        System.out.println(s1.sumar(3, 4));
+
+        Sumador<Double> s2 = new Sumador<>();
+        System.out.println(s2.sumar(2.5, 1.5));
+    }
+}
+```
+
+Salida real:
+
+```
+7.0
+4.0
+```
+
+### Sin el límite, no compila
+
+`doubleValue()` es un método de `Number`, no de `Object` — sin el `extends Number`, el
+compilador solo sabe que `T` es "algún tipo" y no puede garantizar que tenga ese método:
+
+```java
+class SumadorSinLimite<T> {
+    public double sumar(T a, T b) {
+        return a.doubleValue() + b.doubleValue(); // ERROR esperado: T no tiene doubleValue()
+    }
+}
+```
+
+Error real de `javac`:
+
+```
+SumadorSinLimite.java:3: error: cannot find symbol
+        return a.doubleValue() + b.doubleValue();
+                ^
+  symbol:   method doubleValue()
+  location: variable a of type T
+  where T is a type-variable:
+    T extends Object declared in class SumadorSinLimite
+```
+
+El mensaje lo dice explícitamente: sin acotar, `T` "extiende" implícitamente `Object` (el
+límite por defecto de todo parámetro de tipo), y `Object` no tiene `doubleValue()`. El
+`extends Number` no es un capricho de estilo — es lo que hace que el cuerpo del método
+compile.
+
+## Erasure de tipos (*type erasure*)
+
+Uno de los hechos más importantes — y más sorprendentes — sobre los genéricos en Java:
+**no existen en tiempo de ejecución**. El compilador los usa para verificar tipos al
+compilar, y luego los "borra": todo `Box<String>` y `Box<Integer>` se compilan al mismo
+bytecode de `Box`, como si el parámetro de tipo nunca hubiera estado ahí. Prueba real,
+comprobando en tiempo de ejecución con `getClass()`:
+
+```java
+import java.util.ArrayList;
+
+public class DemoErasure {
+    public static void main(String[] args) {
+        ArrayList<String> listaString = new ArrayList<>();
+        ArrayList<Integer> listaInteger = new ArrayList<>();
+
+        System.out.println(listaString.getClass());
+        System.out.println(listaInteger.getClass());
+        System.out.println(listaString.getClass() == listaInteger.getClass());
+    }
+}
+```
+
+Salida real:
+
+```
+class java.util.ArrayList
+class java.util.ArrayList
+true
+```
+
+`getClass()` no distingue `ArrayList<String>` de `ArrayList<Integer>` — a nivel de JVM
+son exactamente **la misma clase** `ArrayList`. Esto explica dos cosas que de otro modo
+parecen arbitrarias:
+
+- Por qué los genéricos no funcionan con tipos primitivos (`Box<int>` no existe): el
+  parámetro de tipo se borra y se reemplaza por `Object` internamente, y un primitivo no
+  puede sustituir a `Object`.
+- Por qué el compilador emite advertencias de "unchecked cast" cuando se hace un cast a
+  un tipo con parámetro genérico dentro de una implementación (como el
+  `@SuppressWarnings("unchecked")` que aparece al implementar una pila o cola genérica
+  respaldada por `Object[]` en [Pilas y Colas](/teaching/data-structures/1p/pilas-colas)):
+  en tiempo de ejecución la JVM ya no sabe qué era `T`, así que no puede verificar ese
+  cast — solo confía en que el compilador lo verificó antes de borrar la información.
 
 ## Wildcards (comodines)
 
@@ -55,19 +325,171 @@ Dan más flexibilidad al usar tipos genéricos como parámetro de un método:
   `Integer`, `Double`, o cualquier subtipo de `Number`.
 - **Con límite inferior** (`? super T`) — acepta `T` o cualquier supertipo de `T`.
 
+```java
+import java.util.List;
+
+class Impresor {
+    static void imprimirTodos(List<?> lista) {
+        for (Object o : lista) {
+            System.out.println(o);
+        }
+    }
+
+    static double sumarNumeros(List<? extends Number> lista) {
+        double total = 0;
+        for (Number n : lista) {
+            total += n.doubleValue();
+        }
+        return total;
+    }
+}
+
+public class DemoWildcardsPropio {
+    public static void main(String[] args) {
+        List<String> nombres = List.of("Ana", "Beto");
+        Impresor.imprimirTodos(nombres);
+
+        List<Integer> enteros = List.of(1, 2, 3);
+        System.out.println(Impresor.sumarNumeros(enteros));
+    }
+}
+```
+
+Salida real:
+
+```
+Ana
+Beto
+6.0
+```
+
+`imprimirTodos` acepta `List<String>` sin problema gracias al `?` sin restricción;
+`sumarNumeros` acepta `List<Integer>` gracias a `? extends Number` — y dentro del método
+cada elemento se puede tratar como `Number` (llamar `doubleValue()`) porque el compilador
+sabe que, sea cual sea el tipo real, es `Number` o un subtipo.
+
+### `List<?>` no es lo mismo que `List<Object>`
+
+Un detalle que suele confundirse: `List<?>` significa "una lista de **algún** tipo
+específico que no conozco", no "una lista de cualquier cosa mezclada". Por eso el
+compilador prohíbe agregar elementos a través de una referencia `List<?>` (salvo `null`)
+— no puede garantizar que lo que agregues coincida con el tipo real y desconocido de esa
+lista:
+
+```java
+import java.util.List;
+import java.util.ArrayList;
+
+public class DemoWildcardAddError {
+    static void agregar(List<?> lista) {
+        lista.add("texto"); // ERROR esperado: no se puede agregar a List<?>
+    }
+
+    public static void main(String[] args) {
+        List<String> nombres = new ArrayList<>();
+        agregar(nombres);
+    }
+}
+```
+
+Error real de `javac`:
+
+```
+DemoWildcardAddError.java:6: error: incompatible types: String cannot be converted to CAP#1
+        lista.add("texto");
+                  ^
+  where CAP#1 is a fresh type-variable:
+    CAP#1 extends Object from capture of ?
+```
+
+`List<Object>`, en cambio, sí garantiza que el tipo real es exactamente `Object`, así que
+agregar cualquier objeto es válido — pero entonces ya no acepta una `List<String>` como
+argumento (`List<String>` no es un `List<Object>` para el compilador, aunque `String` sí
+sea un `Object`).
+
 ## Convenciones de nombres
 
 Los parámetros de tipo son letras mayúsculas simples: **E** (Element, colecciones),
 **K** (Key), **V** (Value), **N** (Number), **T** (Type), y **S, U, V...** para un segundo,
 tercer o cuarto tipo cuando una clase necesita más de uno (por ejemplo
-`Par<K, V>` o `Triple<T, U, V>`).
+`Par<K, V>` o `Triple<T, U, V>`). El compilador acepta cualquier identificador válido como
+parámetro de tipo — estas letras son pura convención de lectura, no una regla del
+lenguaje. El archivo `Generics (2).java`, en la sección "Código Fuente Java" al final de
+esta página, recorre cada letra con su propia clase de ejemplo, y contrasta una versión
+`CajaSinGenericos` (con `Object`, igual que `CajaObjeto` de arriba) contra `Caja<T>` lado
+a lado.
 
 ## Reglas importantes
 
 - Los genéricos **no funcionan con tipos primitivos** — `Box<int>` es un error; hay que
-  usar la clase envolvente (`Box<Integer>`).
-- `Box<String>` y `Box<Integer>` son tipos distintos e incompatibles entre sí.
+  usar la clase envolvente (`Box<Integer>`). Es consecuencia directa del *erasure*: el
+  parámetro de tipo se borra a `Object`, y un primitivo no puede sustituir a `Object`.
+- `Box<String>` y `Box<Integer>` son tipos distintos e incompatibles entre sí **para el
+  compilador**, aunque en tiempo de ejecución, por *erasure*, terminen siendo la misma
+  clase `Box` (ver la sección de *erasure* de arriba) — la seguridad de tipo que dan los
+  genéricos existe solo en tiempo de compilación.
 - El parámetro de tipo no puede omitirse silenciosamente sin perder seguridad de tipo.
 - Parametrizar **no es lo mismo** que sobrecargar (*overloading*): la sobrecarga define
   métodos distintos para tipos distintos, todos devolviendo el mismo tipo de salida; un
   método genérico es uno solo, y su tipo de entrada y salida varían juntos según `T`.
+
+## Errores frecuentes
+
+- **"Si no compila con `Object`, tampoco compilaría con genéricos."** Falso — es
+  exactamente al revés. La sección "Por qué importan" de arriba muestra el mismo error
+  (guardar un `Integer` donde se esperaba un `String`) compilando sin problema con
+  `Object` (y reventando en tiempo de ejecución) y fallando en `javac` con genéricos
+  (sin llegar a ejecutarse nunca).
+- **"En tiempo de ejecución, un objeto sabe si es de tipo `ArrayList<String>` o
+  `ArrayList<Integer>`."** Falso — por *erasure*, ambos son exactamente la misma clase
+  `ArrayList` para la JVM; `getClass()` lo confirma (ver la sección de *erasure*).
+  Cualquier chequeo de tipo específico de un genérico (`instanceof ArrayList<String>`,
+  por ejemplo) es, de hecho, un error de compilación en Java por esta misma razón.
+- **"`List<?>` es lo mismo que `List<Object>`."** Falso — `List<?>` es una lista de
+  *algún* tipo desconocido pero fijo, y por eso no se le puede agregar nada (salvo
+  `null`); `List<Object>` sí acepta agregar cualquier objeto, pero no acepta una
+  `List<String>` como argumento. Ver la comparación de arriba con el error real de
+  `javac`.
+- **"Sin `extends Number`, `T` no tiene ningún límite."** Impreciso — todo parámetro de
+  tipo sin límite explícito extiende implícitamente `Object` (el mensaje de error de
+  `SumadorSinLimite` lo muestra: `T extends Object declared in class...`), por eso solo
+  tiene disponibles los métodos de `Object`.
+
+## Comprueba lo aprendido
+
+- ¿Por qué `caja.set(123)` en `CajaObjeto` (con `Object`) compila sin errores, pero el
+  mismo `123` pasado a un `Caja<String>` genérico no compila? ¿En qué momento del ciclo
+  de vida del programa se detecta cada error?
+- Si `new ArrayList<String>().getClass() == new ArrayList<Integer>().getClass()` es
+  `true`, ¿por qué entonces `ArrayList<String> lista = new ArrayList<Integer>();` sigue
+  siendo un error de compilación?
+- Escribe una clase genérica `Contador<T extends Comparable<T>>` con un método
+  `T mayor(T a, T b)` que use `a.compareTo(b)`. ¿Por qué hace falta el límite
+  `extends Comparable<T>` para que compile?
+- ¿Qué error de compilación esperarías si, dentro de un método que recibe
+  `List<? extends Number> lista`, intentas hacer `lista.add(5)`? (Pista: la misma razón
+  por la que `List<?>` no acepta `add`.)
+
+## Resumen
+
+- Con `Object` el mismo error de tipo (guardar un valor y luego castearlo mal) compila
+  sin avisos y revienta en tiempo de ejecución con `ClassCastException`; con genéricos,
+  el compilador lo atrapa antes de generar el `.class` — esa es la razón de ser de los
+  genéricos, demostrada con código real en esta página, no solo afirmada.
+- `<T extends Number>` (límite superior) habilita usar dentro del cuerpo los métodos que
+  solo tiene esa familia de tipos; sin el límite, `T` solo tiene los métodos de `Object`
+  y el compilador rechaza cualquier otra llamada.
+- *Type erasure*: los parámetros de tipo existen solo en tiempo de compilación. En
+  tiempo de ejecución, `ArrayList<String>` y `ArrayList<Integer>` son la misma clase
+  (`getClass()` lo prueba) — de ahí que los genéricos no acepten primitivos y que ciertos
+  casts internos generen advertencias de "unchecked" que el programador debe verificar a
+  mano.
+- Tanto métodos (`<T> T primero(T[] arreglo)`) como interfaces
+  (`interface Transformador<T, R>`) pueden ser genéricos, no solo clases — cada uno
+  declara su propio parámetro de tipo, independiente de si la clase que lo contiene
+  también es genérica.
+- Los wildcards (`?`, `? extends T`, `? super T`) dan flexibilidad al *usar* un tipo
+  genérico como parámetro de método, pero `List<?>` no es intercambiable con
+  `List<Object>`: uno acepta cualquier lista pero prohíbe agregar (salvo `null`), el otro
+  permite agregar cualquier objeto pero solo acepta listas declaradas exactamente como
+  `List<Object>`.

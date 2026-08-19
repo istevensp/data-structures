@@ -1,6 +1,9 @@
 //////////////////////////////////////////////////////////////
-//Clase Base de la Lista:
+// Clase Base de la Lista
 //////////////////////////////////////////////////////////////
+
+import java.util.Iterator;
+
 class SinglyLinkedList<T> {
     private Node<T> head;
 
@@ -14,6 +17,8 @@ class SinglyLinkedList<T> {
         }
     }
 
+    // Inserta al final — recorre toda la lista para llegar ahí porque no
+    // se guarda una referencia aparte al último nodo.
     public void add(T data) {
         if (head == null) {
             head = new Node<>(data);
@@ -46,6 +51,9 @@ class SinglyLinkedList<T> {
             return data;
         }
 
+        // Una lista enlazada simple solo tiene referencias hacia adelante —
+        // remover el nodo actual requeriría el nodo anterior, que este
+        // iterador no guarda. Por eso no se soporta.
         @Override
         public void remove() {
             throw new UnsupportedOperationException("Remove not supported for singly linked list");
@@ -67,7 +75,7 @@ class SinglyLinkedList<T> {
 }
 
 //////////////////////////////////////////////////////////////
-//Uso:
+// Uso
 //////////////////////////////////////////////////////////////
 
 public class Main {
@@ -84,7 +92,7 @@ public class Main {
             System.out.println(iterator.next());
         }
 
-        // Usar métodos adicionales
+        // reset() + peek(): consultar el primer elemento sin volver a recorrer
         iterator.reset();
         System.out.println("\nPrimer elemento (peek): " + iterator.peek());
         System.out.println("Es el primer elemento: " + iterator.isFirst());

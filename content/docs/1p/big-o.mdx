@@ -12,20 +12,439 @@ algoritmo a medida que crece el tamaño de la entrada. La "O" se lee **"en el pe
 casos"**: no importa cuántas operaciones tome un caso favorable, lo que interesa es el
 límite superior sobre cualquier entrada posible de tamaño *n*.
 
-## Complejidades comunes
+No es una medida de tiempo en segundos ni depende de qué tan rápido sea el computador
+donde corre el código — es una medida de **crecimiento**: si *n* se duplica, ¿el trabajo
+se duplica también (lineal), se cuadruplica (cuadrático), apenas crece en uno (logarítmico)
+o se mantiene igual (constante)? Esta página muestra cómo llegar a esa respuesta contando
+operaciones reales en código Java compilado, no solo memorizando la tabla.
 
-- **O(1) — constante.** El algoritmo hace el mismo trabajo sin importar el tamaño de la
-  entrada. Ejemplo: calcular `a + b + c`.
-- **O(log n) — logarítmica.** Cada paso descarta una fracción de los datos. Ejemplo:
-  búsqueda binaria sobre un arreglo ordenado — buscar un valor entre *n* elementos toma
-  aproximadamente log₂(n) comparaciones, porque cada comparación descarta la mitad
-  restante.
-- **O(n) — lineal.** El trabajo crece proporcionalmente a la entrada. Ejemplo: en el peor
-  caso, encontrar un elemento revisando una caja a la vez entre *n* cajas.
-- **O(n²) — cuadrática.** Ejemplo: revisar una cuadrícula de *n*×*n* casillas una por una.
-- **O(n!) — factorial.** Crece de forma explosiva incluso con entradas pequeñas. Ejemplo
-  clásico: el problema del agente viajero resuelto por fuerza bruta — con 10 ciudades ya
-  son 3'628.800 rutas posibles a evaluar; con 28, la cifra tiene más de 30 dígitos.
+## Cómo derivar un Big-O: contando operaciones
+
+El método es siempre el mismo: se identifica una operación "unidad" (una comparación, una
+asignación, una suma), se cuenta cuántas veces se ejecuta en función de *n*, y esa función
+—simplificada al término que más pesa cuando *n* es grande— es el Big-O.
+
+### Un bucle simple
+
+```java
+public class ContarLineal {
+    public static void main(String[] args) {
+        for (int n : new int[]{5, 10, 20, 40}) {
+            int contador = 0;
+            for (int i = 0; i < n; i++) {
+                contador++; // una operación por iteración
+            }
+            System.out.println("n=" + n + " -> operaciones=" + contador);
+        }
+    }
+}
+```
+
+Salida real:
+
+```
+n=5 -> operaciones=5
+n=10 -> operaciones=10
+n=20 -> operaciones=20
+n=40 -> operaciones=40
+```
+
+El bucle ejecuta el cuerpo exactamente *n* veces: la función de conteo es `f(n) = n`, y al
+duplicar *n* (de 5 a 10, de 10 a 20, de 20 a 40) el número de operaciones se duplica en la
+misma proporción. Eso es, por definición, crecimiento **lineal**: O(n).
+
+### Bucles anidados
+
+```java
+public class ContarAnidado {
+    public static void main(String[] args) {
+        for (int n : new int[]{5, 10, 20, 40}) {
+            int contador = 0;
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j < n; j++) {
+                    contador++;
+                }
+            }
+            System.out.println("n=" + n + " -> operaciones=" + contador);
+        }
+    }
+}
+```
+
+Salida real:
+
+```
+n=5 -> operaciones=25
+n=10 -> operaciones=100
+n=20 -> operaciones=400
+n=40 -> operaciones=1600
+```
+
+Por cada una de las *n* vueltas del bucle externo, el bucle interno vuelve a dar *n*
+vueltas completas: la función de conteo es `f(n) = n × n = n²`. La evidencia lo confirma:
+al duplicar *n*, las operaciones **se cuadruplican** (25→100→400→1600, cada salto ×4), no
+se duplican. Eso es crecimiento **cuadrático**: O(n²).
+
+### Un bucle que reduce el problema a la mitad
+
+```java
+public class ContarLogaritmico {
+    public static void main(String[] args) {
+        for (int n : new int[]{16, 32, 64, 128, 1024}) {
+            int contador = 0;
+            int tam = n;
+            while (tam > 1) {
+                tam = tam / 2;
+                contador++;
+            }
+            System.out.println("n=" + n + " -> pasos=" + contador);
+        }
+    }
+}
+```
+
+Salida real:
+
+```
+n=16 -> pasos=4
+n=32 -> pasos=5
+n=64 -> pasos=6
+n=128 -> pasos=7
+n=1024 -> pasos=10
+```
+
+Aquí cada iteración no avanza de a uno: divide `tam` entre 2. Al duplicar *n*, el número
+de pasos solo **crece en 1** (16→32 pasa de 4 a 5 pasos; 512→1024 pasaría de 9 a 10). Eso
+es exactamente lo que hace log₂: log₂(16)=4, log₂(1024)=10, coincidiendo con la salida
+medida. Este patrón —dividir el problema entre una fracción constante en cada paso— es la
+firma de la complejidad **logarítmica**: O(log n).
+
+## Complejidades comunes, con evidencia real
+
+### O(1) — constante
+
+El algoritmo hace el mismo trabajo sin importar el tamaño ni el valor de la entrada.
+
+```java
+public class Constante {
+    static int sumarTres(int a, int b, int c) {
+        return a + b + c;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(sumarTres(1, 2, 3));
+        System.out.println(sumarTres(1_000_000, 2_000_000, 3_000_000));
+    }
+}
+```
+
+Salida real:
+
+```
+6
+6000000
+```
+
+`sumarTres` ejecuta exactamente dos sumas sin importar la magnitud de los argumentos —no
+hay ningún bucle ni recursión que dependa de un tamaño de entrada. Lo mismo aplica a
+acceder a `arr[0]` en un arreglo: es una lectura directa por desplazamiento de memoria, el
+mismo trabajo si el arreglo tiene 3 elementos o 3 millones.
+
+### O(log n) — logarítmica
+
+El ejemplo clásico es la búsqueda binaria sobre un arreglo ordenado: cada comparación
+descarta la mitad restante del rango de búsqueda.
+
+```java
+public class ContarBusquedaBinaria {
+    static int comparaciones;
+
+    static int buscar(int[] arr, int objetivo) {
+        int inicio = 0, fin = arr.length - 1;
+        comparaciones = 0;
+        while (inicio <= fin) {
+            comparaciones++;
+            int medio = inicio + (fin - inicio) / 2;
+            if (arr[medio] == objetivo) return medio;
+            if (arr[medio] < objetivo) inicio = medio + 1;
+            else fin = medio - 1;
+        }
+        return -1;
+    }
+
+    public static void main(String[] args) {
+        for (int n : new int[]{16, 32, 64, 128, 1024, 1_000_000}) {
+            int[] arr = new int[n];
+            for (int i = 0; i < n; i++) arr[i] = i;
+            buscar(arr, -1); // peor caso: no está, recorre hasta agotar el rango
+            System.out.println("n=" + n + " -> comparaciones (peor caso)=" + comparaciones);
+        }
+    }
+}
+```
+
+Salida real:
+
+```
+n=16 -> comparaciones (peor caso)=4
+n=32 -> comparaciones (peor caso)=5
+n=64 -> comparaciones (peor caso)=6
+n=128 -> comparaciones (peor caso)=7
+n=1024 -> comparaciones (peor caso)=10
+n=1000000 -> comparaciones (peor caso)=19
+```
+
+Lo notable: para buscar en un arreglo de **un millón** de elementos, el peor caso toma
+solo 19 comparaciones —no un millón. Duplicar el arreglo de 512 a 1024 solo agrega un paso
+más, igual que en el bucle que divide entre 2 de la sección anterior (misma razón: cada
+comparación descarta la mitad del rango, así que el número de comparaciones es
+aproximadamente log₂(n)).
+
+### O(n) — lineal
+
+El trabajo crece proporcionalmente a la entrada, como en `ContarLineal` de la sección
+anterior: recorrer una lista de *n* elementos revisando uno a la vez. Buscar un valor en
+un arreglo *sin ordenar* es el ejemplo típico —no hay forma de descartar la mitad de los
+datos sin haberlos revisado, así que en el peor caso hay que mirar los *n* elementos.
+
+### O(n²) — cuadrática
+
+Ejemplo típico: comparar cada elemento con todos los demás (como en `ContarAnidado`), o
+revisar una cuadrícula de *n*×*n* casillas una por una. Los algoritmos de ordenamiento por
+comparación simples como *bubble sort* o *insertion sort* caen aquí: por cada uno de los
+*n* elementos, en el peor caso hay que recorrer casi todos los otros *n* para ubicarlo.
+
+### O(n!) — factorial
+
+Crece de forma explosiva incluso con entradas pequeñas. El ejemplo clásico es el problema
+del agente viajero resuelto por fuerza bruta: evaluar el costo de **todas** las
+permutaciones posibles de *n* ciudades (ver `AgenteViajero.java` en el código de este
+tópico para la versión completa con reconstrucción de la mejor ruta). El siguiente conteo
+usa el mismo algoritmo de permutación por intercambios (swap-based), pero solo cuenta
+cuántas rutas se generan, sin calcular distancias:
+
+```java
+public class ContarPermutaciones {
+    static long contador;
+
+    static void permutar(int[] ruta, int l, int r) {
+        if (l == r) {
+            contador++;
+        } else {
+            for (int i = l; i <= r; i++) {
+                int t = ruta[l]; ruta[l] = ruta[i]; ruta[i] = t;
+                permutar(ruta, l + 1, r);
+                t = ruta[l]; ruta[l] = ruta[i]; ruta[i] = t;
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        for (int n = 1; n <= 10; n++) {
+            int[] ruta = new int[n];
+            for (int i = 0; i < n; i++) ruta[i] = i;
+            contador = 0;
+            permutar(ruta, 0, n - 1);
+            System.out.println("n=" + n + " ciudades -> " + contador + " rutas evaluadas");
+        }
+    }
+}
+```
+
+Salida real:
+
+```
+n=1 ciudades -> 1 rutas evaluadas
+n=2 ciudades -> 2 rutas evaluadas
+n=3 ciudades -> 6 rutas evaluadas
+n=4 ciudades -> 24 rutas evaluadas
+n=5 ciudades -> 120 rutas evaluadas
+n=6 ciudades -> 720 rutas evaluadas
+n=7 ciudades -> 5040 rutas evaluadas
+n=8 ciudades -> 40320 rutas evaluadas
+n=9 ciudades -> 362880 rutas evaluadas
+n=10 ciudades -> 3628800 rutas evaluadas
+```
+
+Con 10 ciudades ya son 3.628.800 rutas evaluadas —exactamente 10!. La siguiente tabla
+confirma qué tan rápido crece n! con `BigInteger` (para no desbordar un `long`):
+
+```java
+import java.math.BigInteger;
+
+public class FactorialCrecimiento {
+    public static void main(String[] args) {
+        BigInteger fact = BigInteger.ONE;
+        for (int n = 1; n <= 28; n++) {
+            fact = fact.multiply(BigInteger.valueOf(n));
+            if (n == 5 || n == 10 || n == 15 || n == 20 || n == 28) {
+                System.out.println(n + "! = " + fact + " (" + fact.toString().length() + " dígitos)");
+            }
+        }
+    }
+}
+```
+
+Salida real:
+
+```
+5! = 120 (3 dígitos)
+10! = 3628800 (7 dígitos)
+15! = 1307674368000 (13 dígitos)
+20! = 2432902008176640000 (19 dígitos)
+28! = 304888344611713860501504000000 (30 dígitos)
+```
+
+Con 28 ciudades, el número de rutas ya tiene 30 dígitos —muchísimas más que átomos hay en
+la Tierra. Ningún computador, por rápido que sea, evalúa esa cantidad de rutas una por
+una; por eso el problema del agente viajero se ataca en la práctica con heurísticas o
+programación dinámica, no con fuerza bruta, salvo para *n* muy pequeño.
+
+## Por qué se "botan" las constantes y los términos de menor orden
+
+Una regla que se repite sin justificar tanto: O(2n + 100) se simplifica a O(n), porque las
+constantes y los términos de menor orden no cambian la **familia** de crecimiento cuando
+*n* es grande. Se puede comprobar contando operaciones reales, no solo confiando en la
+regla:
+
+```java
+public class CompararCrecimiento {
+    static long operacionesLineal(int n) {
+        long contador = 0;
+        for (int i = 0; i < n; i++) contador++;
+        return contador;
+    }
+
+    static long operacionesLinealConConstantes(int n) {
+        long contador = 0;
+        for (int k = 0; k < 100; k++) contador++; // costo fijo, no depende de n
+        for (int i = 0; i < n; i++) {
+            contador++;
+            contador++; // dos operaciones por iteración -> 2n
+        }
+        return contador;
+    }
+
+    static long operacionesCuadratica(int n) {
+        long contador = 0;
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < n; j++)
+                contador++;
+        return contador;
+    }
+
+    public static void main(String[] args) {
+        int[] tamanos = {10, 100, 1000, 10000};
+        System.out.println("n\tO(n)\tO(2n+100)\tO(n^2)");
+        for (int n : tamanos) {
+            System.out.println(n + "\t" + operacionesLineal(n) + "\t"
+                + operacionesLinealConConstantes(n) + "\t" + operacionesCuadratica(n));
+        }
+    }
+}
+```
+
+Salida real:
+
+| n | O(n) | O(2n+100) | O(n²) | razón vs. fila anterior (O(n) / O(2n+100) / O(n²)) |
+|---|---|---|---|---|
+| 10 | 10 | 120 | 100 | — |
+| 100 | 100 | 300 | 10.000 | ×10 / ×2,5 / ×100 |
+| 1.000 | 1.000 | 2.100 | 1.000.000 | ×10 / ×7,0 / ×100 |
+| 10.000 | 10.000 | 20.100 | 100.000.000 | ×10 / ×9,57 / ×100 |
+
+Dos observaciones reales, no supuestas:
+
+- La columna O(n) crece siempre exactamente ×10 al multiplicar *n* por 10 —como se espera
+  de una función lineal pura.
+- La columna O(2n+100) **no** crece ×10 desde el principio (×2,5 al pasar de n=10 a
+  n=100), porque a esa escala el `+100` fijo todavía domina. Pero a medida que *n* crece,
+  la razón se acerca cada vez más a ×10 (×7,0, luego ×9,57): el término constante se vuelve
+  irrelevante frente al término `2n`, y la curva se comporta cada vez más como una
+  línea recta pura. Esa es la justificación empírica de "botar" el `+100`: para *n*
+  suficientemente grande, su efecto sobre la razón de crecimiento tiende a desaparecer.
+- La columna O(n²), en cambio, crece siempre ×100 = (×10)² —nunca converge hacia ×10. Esa
+  diferencia de familia (crecimiento cuadrático contra lineal) es la que sí importa y la
+  que Big-O captura; la diferencia entre O(n) y O(2n+100) no.
+
+Por referencia, un algoritmo de ordenamiento eficiente por comparaciones (*merge sort*,
+*quick sort* en el caso promedio) es O(n log n): crece más rápido que lineal pero mucho
+más lento que cuadrático —una fila intermedia entre O(n) y O(n²) en la tabla de arriba.
+
+## Complejidad amortizada
+
+Algunas operaciones no cuestan siempre lo mismo: la mayoría de las llamadas son baratas,
+pero de vez en cuando una es cara. La complejidad **amortizada** promedia ese costo caro
+entre todas las operaciones baratas que lo "pagan por adelantado", en vez de reportar el
+peor caso de una sola llamada aislada.
+
+El ejemplo ya trabajado en este curso es `push` sobre una pila respaldada por un arreglo
+que se redimensiona: casi todos los `push` son O(1) porque solo escriben en la siguiente
+posición libre, pero cuando el arreglo se llena, un `push` dispara una copia de **todos**
+los elementos a un arreglo del doble de tamaño —esa operación sí es O(n) en ese instante.
+Aun así, como esa copia ocurre cada vez con menor frecuencia relativa (el arreglo se
+duplica, no crece de a uno), el costo total de *n* operaciones `push` sigue siendo O(n), lo
+que da un promedio de O(1) por operación: O(1) **amortizado**. Ver la traza completa con
+números reales en [Pilas y Colas](/teaching/data-structures/1p/pilas-colas), sección
+"Código Java: pila respaldada por un arreglo".
+
+## Mejor caso, caso promedio y peor caso
+
+Ya se estableció que Big-O describe el **peor caso**. Pero el trabajo real de un algoritmo
+puede variar mucho según dónde esté el dato buscado, y es útil distinguir los tres
+escenarios explícitamente. La búsqueda lineal es el ejemplo más claro:
+
+```java
+public class BusquedaLinealCasos {
+    static int comparaciones;
+
+    static int buscar(int[] arr, int objetivo) {
+        comparaciones = 0;
+        for (int i = 0; i < arr.length; i++) {
+            comparaciones++;
+            if (arr[i] == objetivo) return i;
+        }
+        return -1;
+    }
+
+    public static void main(String[] args) {
+        int[] arr = new int[1000];
+        for (int i = 0; i < arr.length; i++) arr[i] = i;
+
+        buscar(arr, 0);
+        System.out.println("Mejor caso (objetivo en la posicion 0): " + comparaciones + " comparacion(es)");
+
+        buscar(arr, 500);
+        System.out.println("Caso intermedio (objetivo en la posicion 500): " + comparaciones + " comparaciones");
+
+        buscar(arr, 999);
+        System.out.println("Peor caso (objetivo en la ultima posicion): " + comparaciones + " comparaciones");
+
+        buscar(arr, -1);
+        System.out.println("Peor caso (objetivo ausente): " + comparaciones + " comparaciones");
+    }
+}
+```
+
+Salida real (sobre un arreglo de 1000 elementos):
+
+| Escenario | Posición del objetivo | Comparaciones reales |
+|---|---|---|
+| Mejor caso | posición 0 (primer elemento) | 1 |
+| Caso intermedio | posición 500 | 501 |
+| Peor caso | posición 999 (último elemento) | 1000 |
+| Peor caso | ausente (no está en el arreglo) | 1000 |
+
+El **mejor caso** (O(1): el elemento está justo al inicio) y el **peor caso** (O(n): está
+al final o no está) difieren en un factor de mil para este arreglo concreto. Cuando se
+dice "la búsqueda lineal es O(n)" se está describiendo el peor caso —la única garantía
+válida para *cualquier* entrada posible, incluida la más desfavorable. El caso promedio
+(sumando todas las posiciones posibles y dividiendo entre *n*) también es O(n) aquí,
+porque en promedio hay que revisar la mitad del arreglo, y una mitad de *n* sigue siendo
+del orden de *n*. Formalmente estos matices tienen su propia notación —Ω (omega) para
+cota inferior/mejor caso y Θ (theta) cuando cota superior e inferior coinciden— pero en
+este curso, salvo que se diga lo contrario, "la complejidad de un algoritmo" se refiere
+siempre al peor caso descrito con O.
 
 ## ¿Por qué importa en este curso?
 
@@ -34,5 +453,71 @@ límite superior sobre cualquier entrada posible de tamaño *n*.
   lo mismo.
 - La misma operación implementada en distintos TDAs puede tener distinta complejidad
   (acceso por índice es O(1) en un ArrayList, pero O(n) en una lista enlazada).
+- Elegir la estructura equivocada no es solo una cuestión de estilo: sobre entradas
+  grandes, la diferencia entre O(n) y O(n²) es la diferencia entre que un programa
+  responda al instante o se cuelgue por minutos, como lo muestran las tablas de esta
+  página con números medidos, no estimados.
 - Conocer la complejidad ayuda a elegir la estructura correcta para un problema,
   especialmente en dispositivos con recursos limitados o sistemas de tiempo real.
+
+## Errores frecuentes
+
+- **"Big-O mide el tiempo real en segundos."** Falso — mide cómo **crece** el trabajo con
+  *n*, sin importar la velocidad del computador. Un algoritmo O(n) puede tardar más en una
+  máquina lenta que un algoritmo O(n²) con *n* pequeño en una máquina rápida; Big-O no
+  hace esa comparación, solo describe la tendencia de crecimiento a medida que *n* aumenta.
+- **"O(2n) es una complejidad distinta de O(n)."** Falso — ver la sección de arriba: la
+  razón de crecimiento de O(2n+100) converge a la misma familia que O(n) a medida que *n*
+  crece, y por convención se simplifican al mismo término dominante, `n`.
+- **"Un algoritmo con mejor Big-O siempre es más rápido en la práctica."** No
+  necesariamente para *n* pequeño: un algoritmo O(n log n) con constantes grandes puede
+  ser más lento que uno O(n²) con constantes pequeñas si *n* es chico. Big-O garantiza
+  cuál gana **asintóticamente** (para *n* suficientemente grande), no para cualquier
+  tamaño concreto de entrada.
+- **"Si a veces el algoritmo termina rápido, esa es su complejidad."** Confunde mejor caso
+  con la complejidad reportada. La búsqueda lineal de la sección anterior a veces termina
+  en 1 comparación, pero se describe como O(n) porque esa es la garantía válida para
+  *cualquier* entrada, incluida la peor.
+- **"O(n!) y O(2ⁿ) son básicamente lo mismo, ambas 'crecen mucho'."** Falso, y la
+  diferencia es enorme: para n=20, 2²⁰ = 1.048.576, mientras que 20! =
+  2.432.902.008.176.640.000 (ver la tabla de `FactorialCrecimiento` arriba) — factorial le
+  saca a exponencial más de doce órdenes de magnitud de diferencia en ese mismo punto.
+
+## Comprueba lo aprendido
+
+- Extiende `ContarAnidado.java` agregando un tercer bucle `for` anidado (de `0` a `n`
+  también). Antes de correrlo, predice qué complejidad tendrá y cuántas operaciones
+  esperas para `n=10`; luego ejecútalo y compara.
+- Sobre `ContarBusquedaBinaria`, sin ejecutar el código: ¿cuántas comparaciones esperas en
+  el peor caso para un arreglo de 2048 elementos? ¿Y para uno de 2049? Justifica antes de
+  correrlo.
+- Sobre `BusquedaLinealCasos` con el mismo arreglo de 1000 elementos: ¿cuántas
+  comparaciones tomaría encontrar el elemento en la posición 250? ¿Y en la posición 999
+  buscando con `buscar(arr, 999)` versus buscando un valor que no está?
+- ¿Por qué `push` en una pila respaldada por arreglo es O(1) *amortizado* y no O(1)
+  *garantizado*, mientras que `push` en una pila respaldada por nodos enlazados sí es
+  O(1) garantizado? (Ver [Pilas y Colas](/teaching/data-structures/1p/pilas-colas) si hace
+  falta repasar la traza).
+- Sin ejecutar código: ¿la expresión `for (int i = 0; i < n; i++) { for (int j = 0; j < 100; j++) { ... } }`
+  (bucle interno de tamaño **fijo** 100, no `n`) es O(n) o O(n²)? Justifica contando
+  operaciones como en la sección "Cómo derivar un Big-O".
+
+## Resumen
+
+- Para derivar un Big-O: se elige una operación unidad, se cuenta cuántas veces se
+  ejecuta en función de *n*, y se simplifica esa función al término que domina cuando *n*
+  es grande.
+- Patrones de código y su complejidad, confirmados con conteos reales en esta página: un
+  bucle simple es O(n); bucles anidados sobre *n* son O(n²); un bucle que reduce el
+  problema a una fracción constante (como dividir entre 2) es O(log n); generar todas las
+  permutaciones es O(n!).
+- Las constantes y los términos de menor orden se "botan" porque, a medida que *n* crece,
+  dejan de influir en la *razón* de crecimiento — se demostró comparando O(n) contra
+  O(2n+100) contra O(n²) con conteos reales a distintos tamaños.
+- Big-O describe el **peor caso** por convención en este curso; el mejor caso y el caso
+  promedio pueden ser muy distintos (la búsqueda lineal fue de 1 a 1000 comparaciones
+  según dónde estuviera el objetivo) y tienen su propia notación formal (Ω, Θ) si hace
+  falta distinguirlos explícitamente.
+- La complejidad **amortizada** promedia un costo ocasional caro (como redimensionar un
+  arreglo) entre muchas operaciones baratas — ver la traza completa en
+  [Pilas y Colas](/teaching/data-structures/1p/pilas-colas).

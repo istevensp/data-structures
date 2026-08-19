@@ -1,34 +1,48 @@
-/** Ejemplo Simple de Clase Genéricajava **/
+// Este archivo reúne dos bloques de ejemplos sobre genéricos en Java:
+//
+//   Parte 1 (líneas de abajo hasta el resumen intermedio): clase genérica
+//   básica, su contraste con la versión sin genéricos (Object + casting),
+//   métodos e interfaces genéricas, y wildcards.
+//
+//   Parte 2: un recorrido por la convención de nombres de parámetros de
+//   tipo (E, K, N, T, V, y S/U/V para tipos adicionales), cada letra con
+//   su propia clase de ejemplo.
+//
+// Cada demo es una clase con su propio main() — cópiala junto con las
+// clases que usa para probarla de forma aislada.
 
-public class Caja<T> {
+import java.util.List;
+
+//////////////////////////////////////////////////////////////
+// PARTE 1
+//////////////////////////////////////////////////////////////
+
+/** Ejemplo simple de clase genérica **/
+
+class Caja<T> {
     private T objeto;
-    
+
     public void set(T objeto) {
         this.objeto = objeto;
     }
-    
+
     public T get() {
         return objeto;
     }
 }
 
-/**T es el parámetro de tipo que representa cualquier tipo de dato.
-Al crear una instancia de la clase, se define el tipo real.**/
+/** T es el parámetro de tipo que representa cualquier tipo de dato.
+Al crear una instancia de la clase, se define el tipo real. **/
 
-
-
-
-
-/**4: Ejemplo de Uso de Clase Genérica java **/
-public class Main {
+class DemoCajaGenerica {
     public static void main(String[] args) {
-        
-		// Caja que almacena String
+
+        // Caja que almacena String
         Caja<String> cajaDeString = new Caja<>();
         cajaDeString.set("Hola Mundo");
         String mensaje = cajaDeString.get(); // Sin casting
         System.out.println(mensaje);
-        
+
         // Caja que almacena Integer
         Caja<Integer> cajaDeEntero = new Caja<>();
         cajaDeEntero.set(123);
@@ -37,15 +51,17 @@ public class Main {
     }
 }
 
+/** Beneficios de Caja<T> sobre usar Object: seguridad de tipo en tiempo de
+compilación, sin necesidad de casting al recuperar el valor. **/
 
+/** Contraste — Genéricos vs. Object sin genéricos. Misma idea que Caja<T>,
+pero sin parámetro de tipo: el campo es Object, así que hay que castear al
+recuperar el valor, y ese cast puede fallar en tiempo de ejecución si se
+guardó un tipo distinto al esperado (algo que el compilador no detecta). **/
 
-/** Beneficios: Seguridad de tipo en tiempo de compilación.
-Sin necesidad de casting al recuperar el valor.**/
-
-/**5: Genéricos vs. Object Sin Genéricos (Usando Object)java **/
-public class Caja {
+class CajaSinGenericos {
     private Object objeto;
-    
+
     public void set(Object objeto) {
         this.objeto = objeto;
     }
@@ -55,87 +71,85 @@ public class Caja {
     }
 }
 
-/** Problemas: Necesitas hacer casting cuando recuperas el valor.
-Riesgo de errores en tiempo de ejecución.**/
+/** Problemas de esta versión: hay que castear al recuperar el valor, con
+riesgo de ClassCastException en tiempo de ejecución. **/
 
 
+/** Métodos genéricos: no solo las clases pueden ser genéricas — un método
+puede declarar su propio parámetro de tipo <T>, independiente de la clase
+que lo contiene. **/
 
-
-/**7: Métodos Genéricos java **/
-
-public class Utilidad {
+class Utilidad {
+    // <T> antes del tipo de retorno indica el parámetro de tipo del método
     public static <T> void imprimir(T objeto) {
         System.out.println(objeto);
     }
-}
 
-/** Los métodos también pueden ser genéricos.
-<T> indica el tipo genérico que se pasa cuando llamas al método.**/
-
-
-/**8: Ejemplo de Método Genérico java **/
-public class Main {
-    public static void main(String[] args) {
-        Utilidad.imprimir("Hola Mundo");
-        Utilidad.imprimir(123);
-        Utilidad.imprimir(99.99);
-    }
-}
-/** El método imprimir puede manejar cualquier tipo de dato (String, Integer, Double).**/
-
-
-/**9: Interfaces Genéricas java **/
-
-public interface Comparador<T> {
-    boolean comparar(T a, T b);
-}
-
-/** Las interfaces también pueden ser genéricas.
-Permiten que las clases que las implementen trabajen con tipos parametrizados.
-
-
-/**10: Ejemplo de Interface Genérica java **/
-public class ComparadorEnteros implements Comparador<Integer> {
-    public boolean comparar(Integer a, Integer b) {
-        return a > b;
-    }
-}
-/** Comparador<Integer> compara dos enteros.**/
-
-
-/**11: Uso de Wildcards (Comodines)
-Comodines (?): permiten mayor flexibilidad en el uso de tipos genéricos.
-Tipos de comodines:
-Sin restricción: ?
-Con límite superior: ? extends T
-Con límite inferior: ? super T
-
-
-/**12: Ejemplo de Wildcard Sin Restricción java **/
-public class Utilidad {
+    // List<?> acepta una lista de cualquier tipo de objeto (wildcard sin restricción)
     public static void imprimirLista(List<?> lista) {
         for (Object obj : lista) {
             System.out.println(obj);
         }
     }
-}
-/** List<?> acepta una lista de cualquier tipo de objeto.**/
 
-/**13: Ejemplo de Wildcard con Límite Superior java**/
-public class Utilidad {
+    // List<? extends Number> acepta listas de Integer, Double, o cualquier
+    // subtipo de Number (wildcard con límite superior)
     public static void imprimirNumeros(List<? extends Number> lista) {
         for (Number numero : lista) {
             System.out.println(numero);
         }
     }
 }
-/** List<? extends Number> acepta listas de números (ej: Integer, Double, etc.).**/
+
+class DemoMetodoGenerico {
+    public static void main(String[] args) {
+        // El método imprimir puede manejar cualquier tipo de dato (String, Integer, Double).
+        Utilidad.imprimir("Hola Mundo");
+        Utilidad.imprimir(123);
+        Utilidad.imprimir(99.99);
+    }
+}
 
 
-/**Ejercicio: Crea una clase genérica llamada Par que almacene dos elementos.
-Usa esta clase para almacenar pares de valores como Par<String, Integer>.
-java**/
-public class Par<K, V> {
+/** Interfaces genéricas: también pueden serlo, y permiten que las clases
+que las implementen trabajen con el tipo parametrizado que elijan. **/
+
+interface Comparador<T> {
+    boolean comparar(T a, T b);
+}
+
+class ComparadorEnteros implements Comparador<Integer> {
+    public boolean comparar(Integer a, Integer b) {
+        return a > b;
+    }
+}
+
+/** Comparador<Integer> compara dos enteros. **/
+
+
+/**
+Wildcards (comodines): permiten mayor flexibilidad en el uso de tipos genéricos.
+Tipos de comodines:
+  Sin restricción: ?
+  Con límite superior: ? extends T
+  Con límite inferior: ? super T
+**/
+
+class DemoWildcards {
+    public static void main(String[] args) {
+        List<Object> mixta = List.of("texto", 1, 2.5);
+        Utilidad.imprimirLista(mixta); // wildcard sin restricción: acepta cualquier tipo
+
+        List<Integer> enteros = List.of(10, 20, 30);
+        Utilidad.imprimirNumeros(enteros); // wildcard con límite superior: solo Number y subtipos
+    }
+}
+
+
+/** Ejercicio: crea una clase genérica llamada Par que almacene dos elementos.
+Úsala para almacenar pares de valores como Par<String, Integer>. **/
+
+class Par<K, V> {
     private K clave;
     private V valor;
 
@@ -153,15 +167,24 @@ public class Par<K, V> {
     }
 }
 
+class DemoParEjercicio {
+    public static void main(String[] args) {
+        Par<String, Integer> par = new Par<>("edad", 25);
+        System.out.println("Clave: " + par.getClave() + ", Valor: " + par.getValor());
+    }
+}
 
 
+//////////////////////////////////////////////////////////////
+// PARTE 2 — Convenciones de nombres de parámetros de tipo
+//////////////////////////////////////////////////////////////
 
-/**1. E - Element (Elemento)
-Este parámetro es comúnmente utilizado en el contexto de colecciones que manejan elementos, como List, Set, etc. En el siguiente ejemplo, se utiliza E para representar un elemento de una lista genérica.**/
-
+/** 1. E - Element (Elemento)
+Este parámetro es comúnmente utilizado en el contexto de colecciones que manejan
+elementos, como List, Set, etc. **/
 
 // Clase genérica que representa una caja de elementos
-public class CajaElementos<E> {
+class CajaElementos<E> {
     private E elemento;
 
     public void setElemento(E elemento) {
@@ -173,7 +196,7 @@ public class CajaElementos<E> {
     }
 }
 
-public class Main {
+class DemoConvencionE {
     public static void main(String[] args) {
         // Caja que almacena un elemento de tipo String
         CajaElementos<String> cajaDeString = new CajaElementos<>();
@@ -183,50 +206,33 @@ public class Main {
 }
 
 
+/** 2. K - Key (Clave)
+Se usa principalmente en estructuras que tienen pares clave-valor, como un Map.
+Reutiliza la misma clase Par<K, V> del ejercicio de la Parte 1 — aquí el foco no es
+la clase en sí, sino la convención de nombre: K para la clave. **/
 
-/**2. K - Key (Clave)
-Se usa principalmente en estructuras que tienen pares clave-valor, como un Map. Aquí, K representa la clave (key).**/
-
-
-// Clase Par que representa un par clave-valor
-public class Par<K, V> {
-    private K clave;
-    private V valor;
-
-    public Par(K clave, V valor) {
-        this.clave = clave;
-        this.valor = valor;
-    }
-
-    public K getClave() {
-        return clave;
-    }
-
-    public V getValor() {
-        return valor;
-    }
-}
-
-public class Main {
+class DemoConvencionK {
     public static void main(String[] args) {
         // Crear un par con una clave Integer y un valor String
         Par<Integer, String> par = new Par<>(1, "Valor asociado a la clave 1");
         System.out.println("Clave: " + par.getClave() + ", Valor: " + par.getValor());
     }
 }
-/**3. N - Number (Número)
-Este parámetro se utiliza cuando trabajas con clases o métodos genéricos que operan con tipos numéricos (como Integer, Double, etc.).**/
 
+/** 3. N - Number (Número)
+Este parámetro se utiliza cuando trabajas con clases o métodos genéricos que operan
+con tipos numéricos (como Integer, Double, etc.). **/
 
-
-// Clase genérica que acepta solo números
-public class Calculadora<N extends Number> {
+// Clase genérica que acepta solo números — "N extends Number" es un límite
+// superior: no cualquier tipo sirve, solo Number y sus subtipos, porque el
+// cuerpo necesita llamar a doubleValue().
+class Calculadora<N extends Number> {
     public double sumar(N numero1, N numero2) {
         return numero1.doubleValue() + numero2.doubleValue();
     }
 }
 
-public class Main {
+class DemoConvencionN {
     public static void main(String[] args) {
         // Calculadora que opera con números Integer
         Calculadora<Integer> calculadora = new Calculadora<>();
@@ -237,12 +243,13 @@ public class Main {
         System.out.println("Suma: " + calculadoraDouble.sumar(15.5, 4.5));
     }
 }
-/**4. T - Type (Tipo)
-Este es uno de los nombres más comunes para representar cualquier tipo genérico en clases o métodos.**/
 
+/** 4. T - Type (Tipo)
+Este es uno de los nombres más comunes para representar cualquier tipo genérico en
+clases o métodos. **/
 
 // Clase genérica que acepta cualquier tipo de dato
-public class Contenedor<T> {
+class Contenedor<T> {
     private T contenido;
 
     public void setContenido(T contenido) {
@@ -254,7 +261,7 @@ public class Contenedor<T> {
     }
 }
 
-public class Main {
+class DemoConvencionT {
     public static void main(String[] args) {
         // Contenedor de tipo String
         Contenedor<String> contenedorDeString = new Contenedor<>();
@@ -267,12 +274,14 @@ public class Main {
         System.out.println("Contenido: " + contenedorDeInteger.getContenido());
     }
 }
-/**5. V - Value (Valor)
-Este parámetro es comúnmente utilizado en estructuras que tienen pares clave-valor, como un Map. Aquí, V representa el valor asociado a la clave.**/
 
+/** 5. V - Value (Valor)
+Este parámetro es comúnmente utilizado en estructuras que tienen pares clave-valor,
+como un Map. Aquí, V representa el valor asociado a la clave. **/
 
-// Usando un Par genérico con clave K y valor V
-public class ParClaveValor<K, V> {
+// Un Par genérico con clave K y valor V, con nombre propio para distinguirlo
+// del Par<K,V> del ejercicio de la Parte 1 (misma idea, clase separada).
+class ParClaveValor<K, V> {
     private K clave;
     private V valor;
 
@@ -290,18 +299,21 @@ public class ParClaveValor<K, V> {
     }
 }
 
-public class Main {
+class DemoConvencionV {
     public static void main(String[] args) {
         // Crear un Par con clave String y valor Integer
         ParClaveValor<String, Integer> par = new ParClaveValor<>("Clave1", 100);
         System.out.println("Clave: " + par.getClave() + ", Valor: " + par.getValor());
     }
 }
-/**6. S, U, V, etc. - 2nd, 3rd, 4th Types
-Estos parámetros se utilizan cuando necesitas manejar múltiples tipos en una clase o método genérico. Por ejemplo, T puede ser el primer tipo, y U o V pueden representar otros tipos adicionales.**/
 
-// Clase genérica con tres tipos T, U y V**/
-public class Triple<T, U, V> {
+/** 6. S, U, V, etc. - 2do, 3er, 4to tipo
+Estos parámetros se utilizan cuando necesitas manejar múltiples tipos en una clase o
+método genérico. Por ejemplo, T puede ser el primer tipo, y U o V pueden representar
+otros tipos adicionales. **/
+
+// Clase genérica con tres tipos T, U y V
+class Triple<T, U, V> {
     private T primerElemento;
     private U segundoElemento;
     private V tercerElemento;
@@ -334,11 +346,18 @@ public class Main {
         System.out.println("Tercer Elemento: " + triple.getTercerElemento());
     }
 }
-/**Resumen de las Convenciones:
-E: Elemento (usado en colecciones).
-K: Clave.
-N: Número.
-T: Tipo (Type).
-V: Valor.
-S, U, V: Representan segundos, terceros o cuartos tipos.
-Cada convención tiene un uso específico para hacer que los nombres de los parámetros de tipo sean más descriptivos y fáciles de entender. **/
+
+/**
+Resumen de las convenciones:
+  E: Elemento (usado en colecciones).
+  K: Clave.
+  N: Número.
+  T: Tipo (Type).
+  V: Valor.
+  S, U, V: representan un segundo, tercer o cuarto tipo cuando una clase o método
+  necesita más de uno (V se reutiliza aquí con otro sentido — "N-ésimo tipo extra" en
+  vez de "Value" — según cuál de las dos convenciones aplique al caso).
+Cada convención existe para hacer que los nombres de los parámetros de tipo sean más
+descriptivos y fáciles de entender — el compilador acepta cualquier nombre válido de
+identificador, estas letras son solo una costumbre ampliamente seguida.
+**/

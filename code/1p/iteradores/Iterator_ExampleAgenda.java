@@ -1,6 +1,9 @@
 ///////////////////////////////////////////////////////////////////////////////
-//Clase Base: Lista Circular Doblemente Enlazada
+// Clase Base: Lista Circular Doblemente Enlazada
 ///////////////////////////////////////////////////////////////////////////////
+
+import java.util.Iterator;
+import java.util.function.Predicate;
 
 class CircularDoublyLinkedList<T> {
     private Node<T> head;
@@ -73,9 +76,23 @@ class CircularDoublyLinkedList<T> {
         }
 
         // Devuelve el próximo elemento sin avanzar
-        public T peek() {
+        public T peekNext() {
             if (!hasNext()) throw new IllegalStateException("No elements to peek");
             return current.data;
+        }
+
+        // Busca el primer elemento que cumpla el criterio, recorriendo como
+        // máximo una vuelta completa desde el nodo actual — usa un puntero
+        // temporal en vez de 'current' para no alterar el estado del
+        // recorrido en curso.
+        public T find(Predicate<T> criterio) {
+            if (size == 0) return null;
+            Node<T> temp = current;
+            for (int i = 0; i < size; i++) {
+                if (criterio.test(temp.data)) return temp.data;
+                temp = temp.next;
+            }
+            return null;
         }
 
         // Elimina el elemento actual
@@ -150,7 +167,9 @@ public class Main {
         System.out.println("\nPróximo contacto (peekNext):");
         System.out.println(iterador.peekNext());
 
-        // Buscar un contacto específico
+        // Buscar un contacto específico por un criterio arbitrario (no solo
+        // por posición) — esto es lo que un Iterator plano no permite hacer
+        // sin recorrer manualmente elemento por elemento desde afuera.
         System.out.println("\nBuscar contacto por nombre:");
         Contacto encontrado = iterador.find(c -> c.nombre.equals("Bob"));
         System.out.println(encontrado != null ? encontrado : "Contacto no encontrado");
@@ -163,4 +182,3 @@ public class Main {
         }
     }
 }
-

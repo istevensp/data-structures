@@ -11,29 +11,417 @@ Un conjunto (`Set`) es una colección que **no permite elementos duplicados** �
 diferencia de una lista, no importa el orden ni la posición de un elemento, solo si
 pertenece o no al conjunto. La interfaz `Set<E>` de Java extiende `Collection<E>` y
 tiene tres implementaciones principales, que difieren en cómo ordenan (o no) sus
-elementos.
+elementos y en qué usan internamente para decidir si dos elementos son "el mismo".
 
 ## Implementaciones de `Set` en Java
 
-- **`HashSet<E>`** — basado en tabla hash. No garantiza ningún orden de recorrido;
-  operaciones como `add`, `remove` y `contains` son en promedio O(1). Es la opción por
-  defecto cuando el orden no importa.
-- **`LinkedHashSet<E>`** — igual que `HashSet`, pero mantiene el **orden de inserción**
-  al recorrerlo, a costa de un poco más de memoria (una lista enlazada interna además de
-  la tabla hash).
-- **`TreeSet<E>`** — mantiene los elementos **ordenados** (según su orden natural, o un
-  `Comparator` provisto), a costa de que sus operaciones son O(log n) en vez de O(1).
+| Implementación | Orden de recorrido | `add`/`remove`/`contains` | Por dentro |
+|---|---|---|---|
+| `HashSet<E>` | **No garantizado** — puede cambiar entre ejecuciones. | O(1) promedio | Tabla hash: la posición de cada elemento depende de su `hashCode()`. |
+| `LinkedHashSet<E>` | Orden de **inserción**. | O(1) promedio | Tabla hash + lista doblemente enlazada interna que registra el orden. |
+| `TreeSet<E>` | Orden **ordenado** (natural o por `Comparator`). | O(log n) | Árbol binario balanceado (red-black tree). |
 
-## Operaciones típicas
+`HashSet` es la opción por defecto cuando el orden no importa — es la más rápida y la
+que menos memoria extra usa. `LinkedHashSet` cuesta un poco más de memoria (la lista
+enlazada interna) a cambio de un recorrido predecible. `TreeSet` cambia O(1) por
+O(log n) a cambio de mantener los elementos siempre ordenados.
 
-`add(elemento)`, `remove(elemento)`, `contains(elemento)`, `size()`, además de las
-operaciones propias de la teoría de conjuntos: unión (`addAll`), intersección
-(`retainAll`) y diferencia (`removeAll`) entre dos conjuntos.
+### Verificación real: mismos elementos, tres órdenes distintos
 
-## Cuándo usar cada uno
+El siguiente código inserta los mismos seis nombres (con un duplicado, `"Beto"`,
+insertado dos veces) en las tres implementaciones, en el mismo orden:
 
-- Necesitas solo verificar pertenencia, sin importar el orden → `HashSet`.
-- Necesitas recorrer los elementos en el mismo orden en que los agregaste →
-  `LinkedHashSet`.
-- Necesitas los elementos siempre ordenados (por ejemplo, para recorrerlos de menor a
-  mayor) → `TreeSet`.
+```java
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.TreeSet;
+import java.util.Set;
+
+public class OrdenDemo {
+    public static void main(String[] args) {
+        String[] nombres = {"Beto", "Ana", "David", "Carla", "Beto", "Elena"};
+
+        Set<String> hs = new HashSet<>();
+        Set<String> lhs = new LinkedHashSet<>();
+        Set<String> ts = new TreeSet<>();
+
+        for (String n : nombres) {
+            hs.add(n);
+            lhs.add(n);
+            ts.add(n);
+        }
+
+        System.out.println("size HashSet: " + hs.size());
+        System.out.println("size LinkedHashSet: " + lhs.size());
+        System.out.println("size TreeSet: " + ts.size());
+
+        System.out.println("LinkedHashSet (orden de inserción): " + lhs);
+        System.out.println("TreeSet (orden natural): " + ts);
+
+        System.out.println("hs.contains(\"Ana\"): " + hs.contains("Ana"));
+        System.out.println("hs.contains(\"Zoe\"): " + hs.contains("Zoe"));
+    }
+}
+```
+
+Salida real:
+
+```
+size HashSet: 5
+size LinkedHashSet: 5
+size TreeSet: 5
+LinkedHashSet (orden de inserción): [Beto, Ana, David, Carla, Elena]
+TreeSet (orden natural): [Ana, Beto, Carla, David, Elena]
+hs.contains("Ana"): true
+hs.contains("Zoe"): false
+```
+
+Tres cosas para notar en esta salida real:
+
+- Las tres estructuras terminan con `size() == 5`, no 6 — el segundo `"Beto"` fue
+  descartado silenciosamente por las tres, porque un `Set` nunca permite duplicados
+  (`add` de un elemento ya presente simplemente no hace nada y devuelve `false`).
+- `LinkedHashSet` conserva exactamente el orden en que se insertaron los elementos
+  *distintos*: `Beto, Ana, David, Carla, Elena` — igual al orden del arreglo original,
+  sin el segundo `"Beto"`.
+- `TreeSet` los muestra ordenados alfabéticamente, sin importar en qué orden se
+  insertaron.
+
+**A propósito, este ejemplo nunca imprime el contenido de `hs` (el `HashSet`).** Esa
+omisión es intencional, no un descuido: el orden de recorrido de `HashSet` no está
+especificado por el contrato de la interfaz. Puede variar entre versiones de la JVM,
+entre ejecuciones, o al cambiar la capacidad interna de la tabla — apoyarse en un
+orden observado de `HashSet` (aunque parezca estable en la práctica) es un error. Si
+un ejercicio necesita mostrar un recorrido reproducible, se usa `LinkedHashSet` o
+`TreeSet`, nunca `HashSet`.
+
+## Operaciones de conjuntos: unión, intersección, diferencia
+
+Además de `add`, `remove`, `contains` y `size`, `Set<E>` hereda de `Collection<E>` tres
+métodos que implementan directamente las operaciones de la teoría de conjuntos —
+**mutan el conjunto sobre el que se llaman**, así que en la práctica conviene llamarlos
+sobre una copia si se quiere conservar el conjunto original intacto.
+
+| Método | Operación de conjuntos | Qué hace |
+|---|---|---|
+| `a.addAll(b)` | Unión (`a ∪ b`) | Agrega a `a` todos los elementos de `b` que no estuvieran ya. |
+| `a.retainAll(b)` | Intersección (`a ∩ b`) | Deja en `a` solo los elementos que también están en `b`. |
+| `a.removeAll(b)` | Diferencia (`a - b`) | Quita de `a` todos los elementos que también están en `b`. |
+
+### Ejemplo real: estudiantes inscritos en dos cursos
+
+```java
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+public class OperacionesDemo {
+    public static void main(String[] args) {
+        Set<String> cursoA = new LinkedHashSet<>();
+        cursoA.add("Ana");
+        cursoA.add("Beto");
+        cursoA.add("Carla");
+        cursoA.add("David");
+
+        Set<String> cursoB = new LinkedHashSet<>();
+        cursoB.add("Carla");
+        cursoB.add("David");
+        cursoB.add("Elena");
+        cursoB.add("Fabio");
+
+        System.out.println("Curso A: " + cursoA);
+        System.out.println("Curso B: " + cursoB);
+
+        Set<String> union = new LinkedHashSet<>(cursoA);
+        union.addAll(cursoB);
+        System.out.println("Union (addAll): " + union);
+
+        Set<String> interseccion = new LinkedHashSet<>(cursoA);
+        interseccion.retainAll(cursoB);
+        System.out.println("Interseccion (retainAll): " + interseccion);
+
+        Set<String> diferencia = new LinkedHashSet<>(cursoA);
+        diferencia.removeAll(cursoB);
+        System.out.println("Diferencia A-B (removeAll): " + diferencia);
+
+        Set<String> diferenciaBA = new LinkedHashSet<>(cursoB);
+        diferenciaBA.removeAll(cursoA);
+        System.out.println("Diferencia B-A (removeAll): " + diferenciaBA);
+
+        System.out.println("Curso A tras las operaciones: " + cursoA);
+        System.out.println("Curso B tras las operaciones: " + cursoB);
+    }
+}
+```
+
+Salida real:
+
+```
+Curso A: [Ana, Beto, Carla, David]
+Curso B: [Carla, David, Elena, Fabio]
+Union (addAll): [Ana, Beto, Carla, David, Elena, Fabio]
+Interseccion (retainAll): [Carla, David]
+Diferencia A-B (removeAll): [Ana, Beto]
+Diferencia B-A (removeAll): [Elena, Fabio]
+Curso A tras las operaciones: [Ana, Beto, Carla, David]
+Curso B tras las operaciones: [Carla, David, Elena, Fabio]
+```
+
+Nótese que **`cursoA` y `cursoB` no cambian**: el ejemplo llama `addAll`/`retainAll`/
+`removeAll` sobre copias (`new LinkedHashSet<>(cursoA)`), no sobre los cursos
+originales. Si se hubiera llamado `cursoA.retainAll(cursoB)` directamente, `cursoA`
+habría terminado siendo la intersección — perdiendo permanentemente a `"Ana"` y
+`"Beto"`. También vale notar la asimetría de la diferencia: `A - B` (`[Ana, Beto]`) y
+`B - A` (`[Elena, Fabio]`) son conjuntos distintos, igual que en la teoría de conjuntos
+de matemáticas.
+
+## El contrato `equals`/`hashCode` y por qué importa para `Set`
+
+`HashSet` y `LinkedHashSet` deciden si dos elementos son "el mismo" llamando a
+`equals()` — pero primero usan `hashCode()` para ubicar en qué balde (*bucket*) de la
+tabla hash buscar. Java exige un contrato entre ambos métodos: **si `a.equals(b)` es
+`true`, entonces `a.hashCode()` debe ser igual a `b.hashCode()`.** Si una clase
+sobrescribe `equals()` pero no `hashCode()` (o ninguno de los dos), ese contrato se
+rompe y `HashSet`/`HashMap` dejan de funcionar correctamente, aunque el código compile
+sin ningún error ni advertencia.
+
+Sin sobrescribir ninguno de los dos, una clase hereda la implementación de `Object`:
+`equals()` compara **identidad de referencia** (`this == obj`) y `hashCode()` deriva de
+esa misma identidad. Dos objetos con los mismos valores de campos, pero creados con dos
+`new` distintos, son "diferentes" para ese `equals()` heredado.
+
+### Antes: sin `equals`/`hashCode` — el bug clásico
+
+```java
+import java.util.HashSet;
+import java.util.Set;
+
+public class EqualsAntes {
+    static class Punto {
+        int x, y;
+        Punto(int x, int y) { this.x = x; this.y = y; }
+        // sin equals ni hashCode -> se usan los heredados de Object (identidad)
+    }
+
+    public static void main(String[] args) {
+        Set<Punto> puntos = new HashSet<>();
+        puntos.add(new Punto(3, 4));
+
+        boolean contiene = puntos.contains(new Punto(3, 4));
+        System.out.println("puntos.contains(new Punto(3,4)): " + contiene);
+        System.out.println("size tras intentar re-agregar: " + puntos.size());
+        puntos.add(new Punto(3, 4)); // "duplicado" segun los valores, pero es otro objeto
+        System.out.println("size tras add(new Punto(3,4)) de nuevo: " + puntos.size());
+    }
+}
+```
+
+Salida real:
+
+```
+puntos.contains(new Punto(3,4)): false
+size tras intentar re-agregar: 1
+size tras add(new Punto(3,4)) de nuevo: 2
+```
+
+`contains(new Punto(3, 4))` devuelve `false` aunque hay un `Punto` con exactamente esos
+valores dentro del conjunto — es un objeto *distinto* en memoria, y sin `equals()`
+propio, `HashSet` los trata como elementos diferentes. Por la misma razón, el segundo
+`add` no fue rechazado como duplicado: `size()` pasó de 1 a 2.
+
+### Después: con `equals`/`hashCode` correctos
+
+```java
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+
+public class EqualsDespues {
+    static class Punto {
+        int x, y;
+        Punto(int x, int y) { this.x = x; this.y = y; }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (!(obj instanceof Punto)) return false;
+            Punto otro = (Punto) obj;
+            return x == otro.x && y == otro.y;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(x, y);
+        }
+    }
+
+    public static void main(String[] args) {
+        Set<Punto> puntos = new HashSet<>();
+        puntos.add(new Punto(3, 4));
+
+        boolean contiene = puntos.contains(new Punto(3, 4));
+        System.out.println("puntos.contains(new Punto(3,4)): " + contiene);
+        System.out.println("size tras intentar re-agregar: " + puntos.size());
+        puntos.add(new Punto(3, 4)); // ahora sí se reconoce como duplicado
+        System.out.println("size tras add(new Punto(3,4)) de nuevo: " + puntos.size());
+    }
+}
+```
+
+Salida real:
+
+```
+puntos.contains(new Punto(3,4)): true
+size tras intentar re-agregar: 1
+size tras add(new Punto(3,4)) de nuevo: 1
+```
+
+Con `equals()` comparando los valores de `x` e `y`, y `hashCode()` derivado de esos
+mismos campos con `Objects.hash(x, y)`, `contains` ahora reconoce correctamente al
+`Punto(3, 4)` equivalente, y el segundo `add` no aumenta el tamaño del conjunto — se
+detecta como duplicado. **La regla práctica:** si una clase se va a guardar en un
+`HashSet`/`HashMap` y "igual" significa "mismos valores de campos" (no "mismo objeto en
+memoria"), hay que sobrescribir `equals()` y `hashCode()` juntos, nunca solo uno de los
+dos — el IDE o `record` de Java pueden generarlos automáticamente y de forma
+consistente entre sí.
+
+## `TreeSet` con `Comparator` personalizado
+
+`TreeSet` no usa `equals()`/`hashCode()` en absoluto: ordena (y decide qué cuenta como
+"el mismo elemento") exclusivamente con el orden natural (`Comparable`) o con el
+`Comparator` que se le pase al constructor. El detalle de cómo escribir comparadores
+—lambdas, `Comparator.comparing`, encadenar criterios de desempate— está cubierto en
+[Comparadores](/teaching/data-structures/1p/comparadores); aquí solo interesa cómo eso
+afecta a `TreeSet` específicamente.
+
+```java
+import java.util.Comparator;
+import java.util.TreeSet;
+
+public class TreeSetComparatorDemo {
+    static class Estudiante {
+        String nombre;
+        double promedio;
+        Estudiante(String nombre, double promedio) {
+            this.nombre = nombre;
+            this.promedio = promedio;
+        }
+        @Override
+        public String toString() {
+            return nombre + "(" + promedio + ")";
+        }
+    }
+
+    public static void main(String[] args) {
+        TreeSet<Estudiante> porPromedioDesc = new TreeSet<>(
+            Comparator.comparingDouble((Estudiante e) -> e.promedio).reversed()
+        );
+
+        porPromedioDesc.add(new Estudiante("Ana", 8.5));
+        porPromedioDesc.add(new Estudiante("Beto", 9.2));
+        porPromedioDesc.add(new Estudiante("Carla", 7.8));
+        porPromedioDesc.add(new Estudiante("David", 9.2));
+
+        System.out.println(porPromedioDesc);
+        System.out.println("first(): " + porPromedioDesc.first());
+        System.out.println("last(): " + porPromedioDesc.last());
+        System.out.println("size(): " + porPromedioDesc.size());
+    }
+}
+```
+
+Salida real:
+
+```
+[Beto(9.2), Ana(8.5), Carla(7.8)]
+first(): Beto(9.2)
+last(): Carla(7.8)
+size(): 3
+```
+
+**`David` desapareció.** Se insertaron cuatro estudiantes, pero `size()` es 3, no 4 —
+y no hay ningún error ni excepción. La causa: `TreeSet` considera que dos elementos son
+"el mismo" cuando el comparador devuelve `0` al compararlos, sin importar si `equals()`
+los distinguiría. `Beto` y `David` tienen el mismo `promedio` (9.2), así que
+`comparingDouble(...).compare(beto, david)` da `0` — para el `TreeSet`, agregar a
+`David` fue indistinguible de agregar de nuevo a `Beto`, y lo descartó como duplicado.
+Esto es coherente con la documentación oficial de `TreeSet`: *"el orden mantenido por
+un conjunto (ya sea que se provea un comparador explícito o no) debe ser consistente
+con `equals` si se pretende que implemente correctamente la interfaz `Set`"* — y aquí,
+a propósito, no lo es. Si se necesita romper empates entre promedios iguales, el
+comparador debe encadenar un criterio adicional (por ejemplo, comparar por `nombre`
+cuando los promedios coinciden) — ver
+[Comparadores](/teaching/data-structures/1p/comparadores) para cómo encadenar
+criterios con `thenComparing`.
+
+## Cuándo usar cada implementación
+
+| Necesitas... | Usa |
+|---|---|
+| Solo verificar pertenencia, del modo más rápido posible, sin importar el orden | `HashSet` |
+| Recorrer los elementos en el mismo orden en que los agregaste | `LinkedHashSet` |
+| Los elementos siempre ordenados (por ejemplo, para recorrerlos de menor a mayor, o consultar mínimo/máximo con `first()`/`last()`) | `TreeSet` |
+| Guardar objetos de una clase propia en un `HashSet`/`LinkedHashSet` | Antes que nada, sobrescribir `equals()` y `hashCode()` juntos |
+| Ordenar por un criterio propio (no el orden natural) en un `TreeSet` | Pasar un `Comparator` al constructor — ver [Comparadores](/teaching/data-structures/1p/comparadores) |
+
+## Errores frecuentes
+
+- **"Sobrescribir solo `equals()` alcanza para que `HashSet` reconozca duplicados."**
+  Falso — ver la sección de arriba. Sin `hashCode()` consistente, `HashSet` puede
+  colocar dos objetos "iguales" en baldes distintos y nunca los compara con `equals()`
+  entre sí. Hay que sobrescribir ambos, siempre juntos.
+- **"El orden en que `HashSet` imprime sus elementos es el orden en que se
+  insertaron, o al menos es un orden fijo que se puede predecir."** Falso — el
+  contrato de `HashSet` no garantiza ningún orden. Puede parecer estable en una
+  máquina y versión de Java particular, pero no hay que depender de eso; usar
+  `LinkedHashSet` si se necesita orden de inserción.
+- **"`TreeSet` usa `equals()` para decidir si un elemento ya está presente."**
+  Falso — usa el `Comparator` (o `compareTo` si no hay uno explícito): si el
+  comparador devuelve `0` para dos elementos distintos, `TreeSet` los trata como
+  duplicados y descarta el segundo, aunque `equals()` diría que son diferentes. Es
+  exactamente lo que pasó con `Beto` y `David` en el ejemplo de arriba.
+- **"`retainAll`/`removeAll` devuelven un conjunto nuevo, no modifican el original."**
+  Falso — mutan el conjunto sobre el que se llaman. Si se necesita conservar los
+  conjuntos originales, hay que operar sobre una copia (`new LinkedHashSet<>(original)`),
+  como se hizo en el ejemplo de unión/intersección/diferencia.
+- **"Dos `Set` con los mismos elementos pero de implementaciones distintas (por
+  ejemplo un `HashSet` y un `TreeSet`) nunca son `equals()`."** Falso — `Set.equals()`
+  está definido por contenido, no por implementación: dos conjuntos con exactamente
+  los mismos elementos son `equals()` entre sí sin importar si uno es `HashSet` y el
+  otro `TreeSet`.
+
+## Comprueba lo aprendido
+
+- Sobre un `HashSet<String>` vacío, ¿en qué orden se recorrerían `"perro"`, `"gato"`,
+  `"ave"` tras insertarlos en ese orden? ¿Por qué la respuesta correcta es "no se
+  puede saber con certeza"?
+- Dado `cursoA = {Ana, Beto, Carla}` y `cursoB = {Beto, Carla, David}`, calcula a mano
+  el resultado de la unión, la intersección y `cursoA - cursoB`. Verifica tu respuesta
+  adaptando `OperacionesDemo` de esta página.
+- Escribe una clase `Libro` con campos `String isbn` y `String titulo`, sin
+  sobrescribir `equals`/`hashCode`. Agrega un `Libro` a un `HashSet` y luego llama
+  `contains` con un `Libro` nuevo que tenga el mismo `isbn`. ¿Qué devuelve, y por qué?
+  Corrige la clase para que `equals`/`hashCode` comparen solo por `isbn`, y vuelve a
+  probar.
+- En el ejemplo de `TreeSetComparatorDemo`, ¿qué cambio en el comparador haría que
+  `Beto` y `David` (ambos con promedio 9.2) queden ambos en el conjunto, en vez de que
+  uno descarte al otro?
+
+## Resumen
+
+- Un `Set` nunca permite duplicados: `add` de un elemento ya presente no hace nada y
+  devuelve `false`, sin lanzar ningún error.
+- Las tres implementaciones principales difieren en orden y costo: `HashSet` (sin
+  orden garantizado, O(1) promedio), `LinkedHashSet` (orden de inserción, O(1)
+  promedio) y `TreeSet` (orden ordenado, O(log n)).
+- El orden de recorrido de `HashSet` no está especificado por el contrato de Java —
+  no hay que depender de él, ni siquiera si parece estable en la práctica.
+- `addAll`/`retainAll`/`removeAll` implementan unión/intersección/diferencia, pero
+  **mutan** el conjunto sobre el que se llaman — hay que operar sobre una copia si se
+  quiere conservar el original.
+- El contrato `equals`/`hashCode` es central para `HashSet`/`LinkedHashSet`: hay que
+  sobrescribir ambos juntos, nunca solo uno, o `contains`/`add` dejan de detectar
+  duplicados correctamente aunque el código compile sin errores.
+- `TreeSet` no usa `equals`/`hashCode` — usa el `Comparator` (o el orden natural) para
+  decidir tanto el orden como la igualdad; dos elementos que el comparador considera
+  "empatados" (`compare == 0`) se tratan como duplicados, aunque `equals()` los
+  distinguiría.
